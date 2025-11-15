@@ -1,0 +1,282 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Prevent horizontal scrolling globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Force dialog to take appropriate width */
+[data-radix-dialog-content] {
+  max-width: 45vw !important;
+  width: 45vw !important;
+}
+
+:root {
+  --font-size: 16px;
+  --background: #ffffff;
+  --foreground: #2A2A2A;
+  --card: #ffffff;
+  --card-foreground: #2A2A2A;
+  --popover: #ffffff;
+  --popover-foreground: #2A2A2A;
+  --primary: #2D5A27;
+  --primary-foreground: #ffffff;
+  --secondary: #f8f8f8;
+  --secondary-foreground: #2A2A2A;
+  --muted: #f5f5f5;
+  --muted-foreground: #6B6B6B;
+  --accent: #2D5A27;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: rgba(45, 90, 39, 0.5);
+  --input-background: rgba(45, 90, 39, 0.06);
+  --switch-background: #2D5A27;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #2D5A27;
+  --chart-1: #2D5A27;
+  --chart-2: #3E7A35;
+  --chart-3: #1F4A1A;
+  --chart-4: #4A8A42;
+  --chart-5: #5B9A52;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2A2A2A;
+  --sidebar-primary: #2D5A27;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f8f8f8;
+  --sidebar-accent-foreground: #2A2A2A;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #2D5A27;
+}
+
+.dark {
+  --background: #1a1a1a;
+  --foreground: #ffffff;
+  --card: #2A2A2A;
+  --card-foreground: #ffffff;
+  --popover: #2A2A2A;
+  --popover-foreground: #ffffff;
+  --primary: #2D5A27;
+  --primary-foreground: #ffffff;
+  --secondary: #3a3a3a;
+  --secondary-foreground: #ffffff;
+  --muted: #404040;
+  --muted-foreground: #a3a3a3;
+  --accent: #2D5A27;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #404040;
+  --input: rgba(45, 90, 39, 0.5);
+  --ring: #2D5A27;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #2D5A27;
+  --chart-2: #3E7A35;
+  --chart-3: #1F4A1A;
+  --chart-4: #4A8A42;
+  --chart-5: #5B9A52;
+  --sidebar: #2A2A2A;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #2D5A27;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3a3a3a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #404040;
+  --sidebar-ring: #2D5A27;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  p {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
+
+/* Line clamp utility for text truncation */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Form styling with green agri accents - simplified */
+@layer base {
+  /* Ensure all inputs have proper borders and backgrounds */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  textarea,
+  select {
+    border: 1px solid var(--input) !important;
+    background-color: var(--input-background) !important;
+    border-radius: 0.5rem !important;
+  }
+  
+  /* Focus states for form inputs */
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="number"]:focus,
+  input[type="tel"]:focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px rgba(45, 90, 39, 0.2) !important;
+    outline: none !important;
+  }
+  
+  /* Fix dropdown/select content transparency issues */
+  [role="listbox"],
+  [data-radix-popper-content-wrapper],
+  [data-radix-select-content] {
+    background-color: var(--background) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    z-index: 100 !important;
+  }
+  
+  /* Select dropdown styling */
+  [data-slot="select-item"],
+  [data-radix-select-item],
+  .relative.flex.w-full.cursor-default,
+  [role="option"] {
+    background-color: transparent !important;
+    color: var(--foreground) !important;
+    transition: all 0.15s ease-in-out !important;
+  }
+  
+  /* Hover and focus states for select items */
+  [data-slot="select-item"]:hover,
+  [data-slot="select-item"]:focus,
+  [data-slot="select-item"][data-highlighted],
+  [data-slot="select-item"][data-state="checked"],
+  [data-radix-select-item]:hover,
+  [data-radix-select-item]:focus,
+  [data-radix-select-item][data-highlighted],
+  [data-radix-select-item][data-state="checked"],
+  .relative.flex.w-full.cursor-default:hover,
+  .relative.flex.w-full.cursor-default:focus,
+  .relative.flex.w-full.cursor-default[data-highlighted],
+  [role="option"]:hover,
+  [role="option"]:focus,
+  [role="option"][data-highlighted] {
+    background-color: rgba(45, 90, 39, 0.2) !important;
+    color: var(--foreground) !important;
+  }
+}
