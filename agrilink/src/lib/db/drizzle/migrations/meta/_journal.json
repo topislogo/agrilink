@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1760897392488,
+      "tag": "0000_hesitant_night_nurse",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1760897824152,
+      "tag": "0001_abnormal_cobalt_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761485656567,
+      "tag": "0002_same_star_brand",
+      "breakpoints": true
+    }
+  ]
+}
