@@ -57,10 +57,10 @@ export function AppHeader({ currentUser, onLogout }: AppHeaderProps) {
       }
     };
 
-    window.addEventListener('verificationStatusChanged', handleVerificationStatusChange as EventListener);
+    window.addEventListener('verificationStatusChanged', handleVerificationStatusChange as unknown as EventListener);
     
     return () => {
-      window.removeEventListener('verificationStatusChanged', handleVerificationStatusChange as EventListener);
+      window.removeEventListener('verificationStatusChanged', handleVerificationStatusChange as unknown as EventListener);
     };
   }, [currentUser?.id]);
 
