@@ -398,7 +398,7 @@ export function SimpleOfferModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-w-[90vw] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5" />
             Make an Offer
@@ -616,7 +616,7 @@ export function SimpleOfferModal({
                           const selectedAddress = userAddresses.find(addr => addr.id === selectedAddressId);
                           return (
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-1">
+                              <div className="shrink-0 mt-1">
                                 {selectedAddress?.addressType === 'home' && <Home className="w-4 h-4 text-primary" />}
                                 {selectedAddress?.addressType === 'work' && <Building className="w-4 h-4 text-primary" />}
                                 {selectedAddress?.addressType === 'other' && <MapPin className="w-4 h-4 text-primary" />}

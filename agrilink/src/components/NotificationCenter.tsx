@@ -178,7 +178,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
                       </div>
                     </div>
                     {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />
+                      <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-2" />
                     )}
                   </div>
                 </div>
