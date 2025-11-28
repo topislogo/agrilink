@@ -325,7 +325,7 @@ export function ChatInterface({
           console.log('📱 Using existing conversation:', existingConversationId);
           setConversationId(existingConversationId);
           console.log('🔄 Loading messages for conversation:', existingConversationId);
-          await loadMessages(existingConversationId);
+          await loadMessages(existingConversationId ?? '');
           console.log('✅ Messages loaded for conversation:', existingConversationId);
         } else {
           // Check if conversation already exists in database
@@ -725,7 +725,6 @@ export function ChatInterface({
       city: string;
       state: string;
       postalCode?: string;
-      country: string;
     };
     deliveryOptions: string[];
     paymentTerms: string[];
@@ -794,7 +793,7 @@ export function ChatInterface({
   return (
     <Card className="h-full flex flex-col border-0 rounded-none">
       {/* Header - Fixed */}
-      <CardHeader className="flex-shrink-0 pb-3">
+      <CardHeader className="shrink-0 pb-3">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -923,7 +922,7 @@ export function ChatInterface({
                     >
                       {/* Profile Image - Only show for received messages */}
                       {!isOwnMessage && (
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           <button 
                             onClick={() => {
                               const route = (otherPartyType === 'farmer' || otherPartyType === 'trader') 
@@ -970,7 +969,7 @@ export function ChatInterface({
                       
                       {/* Profile Image - Only show for sent messages */}
                       {isOwnMessage && (
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           <S3Avatar 
                             src={senderImage || undefined}
                             alt={senderName || 'User'}
@@ -1028,7 +1027,7 @@ export function ChatInterface({
         </ScrollArea>
 
         {/* Message Input - Always present, never conditionally rendered */}
-        <div className="flex-shrink-0 p-4 border-t bg-card">
+        <div className="shrink-0 p-4 border-t bg-card">
           <div className="flex gap-2">
             <Input
               placeholder={

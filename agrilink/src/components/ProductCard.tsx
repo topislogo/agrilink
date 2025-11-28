@@ -18,6 +18,7 @@ interface Product {
   unit: string;
   quantity?: string | number;
   imageUrl?: string;
+  availableQuantity?: string;
   seller: {
     id: string;
     name: string;
@@ -29,6 +30,7 @@ interface Product {
     accountType?: string;
   };
   createdAt: string;
+  updatedAt?: string
 }
 
 interface ProductCardProps {
