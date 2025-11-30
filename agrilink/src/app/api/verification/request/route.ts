@@ -220,8 +220,66 @@ export async function POST(request: NextRequest) {
         `;
         console.log('✅ Verification request inserted with ID:', result[0].id);
 
+        console.log('🔄 Updating user verification status...');
 
+        if (businessName || businessDescription || businessLicenseNumber || businessHours || specialties || policies) {
+            console.log('🔄 Handling business details...');
+        
+            // Check if business details already exist for this user
+            const existingBusiness = await sql`
+                SELECT id FROM business_details WHERE "userId" = ${userId} LIMIT 1
+            `;
 
+            if (existingBusiness.length > 0) {
+                // Update existing business details
+                console.log('🔄 Updating existing business details...');
+                await sql`
+                UPDATE business_details 
+                SET 
+                    "businessName" = ${businessName || null},
+                    "businessDescription" = ${businessDescription || null},
+                    "businessLicenseNumber" = ${businessLicenseNumber || null},
+                    "businessHours" = ${businessHours || null},
+                    "specialties" = ${specialties || null},
+                    "policies" = ${policies ? JSON.stringify(policies) : null},
+                    "updatedAt" = NOW()
+                WHERE "userId" = ${userId}
+                `;
+                console.log('✅ Business details updated');
+            } else {
+                // Insert new business details
+                console.log('🔄 Inserting new business details...');
+                await sql`
+                INSERT INTO business_details (
+                    "userId",
+                    "businessName",
+                    "businessDescription",
+                    "businessLicenseNumber",
+                    "businessHours",
+                    "specialties",
+                    "policies",
+                    "createdAt",
+                    "updatedAt"
+                ) VALUES (
+                    ${userId},
+                    ${businessName || null},
+                    ${businessDescription || null},
+                    ${businessLicenseNumber || null},
+                    ${businessHours || null},
+                    ${specialties || null},
+                    ${policies ? JSON.stringify(policies) : null},
+                    NOW(),
+                    NOW()
+                )
+                `;
+                console.log('✅ Business details inserted');
+            }
+        }
+        return NextResponse.json({
+        success: true,
+        message: 'Verification request submitted successfully',
+        requestId: result[0].id
+        });
     }
     catch  (error:any) {
         return NextResponse.json(
