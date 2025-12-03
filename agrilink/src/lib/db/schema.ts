@@ -47,9 +47,9 @@ export const sellerCustomDeliveryOptions = pgTable('seller_custom_delivery_optio
   isActive: boolean('isActive').default(true),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow(),
-}, (table) => [
-  unique().on(table.sellerId, table.name),
-]);
+}, (table) => ({
+  uniqueSellerName: unique().on(table.sellerId, table.name),
+}));
 
 // Seller custom payment terms table - Seller-specific payment methods
 export const sellerCustomPaymentTerms = pgTable('seller_custom_payment_terms', {
@@ -59,9 +59,9 @@ export const sellerCustomPaymentTerms = pgTable('seller_custom_payment_terms', {
   isActive: boolean('isActive').default(true),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow(),
-}, (table) => [
-  unique().on(table.sellerId, table.name),
-]);
+}, (table) => ({
+  uniqueSellerName: unique().on(table.sellerId, table.name),
+}));
 
 // ============================================================================
 // USER MANAGEMENT SYSTEM
@@ -95,7 +95,6 @@ export const userProfiles = pgTable('user_profiles', {
   specialties: text('specialties').array(), // Array of specialties
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
-  aboutme: text('aboutme'),
 }, (table) => ({
   uniqueUserId: unique().on(table.userId),
 }));
@@ -159,7 +158,9 @@ export const businessDetails = pgTable('business_details', {
   policies: jsonb('policies'),
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
-});
+}, (table) => ({
+  uniqueUserId: unique().on(table.userId),
+}));
 
 // Email management table - Email change requests and password resets
 export const emailManagement = pgTable('email_management', {
