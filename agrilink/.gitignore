@@ -44,3 +44,5 @@ next-env.d.ts
 *.tmp
 *.log
 .env*.local
+migrate-s3*
+fix-s3*
