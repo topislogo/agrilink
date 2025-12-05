@@ -192,8 +192,8 @@ export function ProductCard({
           <Button 
             variant="outline" 
             size="sm" 
-            className={`flex-1 h-8 text-xs ${!currentUser?.emailVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!currentUser?.emailVerified}
+            className={`flex-1 h-8 text-xs`}
+            disabled={!currentUser}
             onClick={(e) => {
               e.stopPropagation();
               if (!currentUser) {
@@ -201,16 +201,11 @@ export function ProductCard({
                 window.location.href = '/login';
                 return;
               }
-              if (!currentUser.emailVerified) {
-                alert('Please verify your email to contact sellers');
-                return;
-              }
               onChatClick(product.seller.id);
             }}
           >
             <MessageCircle className="w-3 h-3 mr-1" />
-            {!currentUser ? 'Sign in to chat' : 
-             !currentUser.emailVerified ? 'Verify email' : 'Chat'}
+            {!currentUser ? 'Sign in to chat' : 'Chat'}
           </Button>
         )}
       </CardFooter>
