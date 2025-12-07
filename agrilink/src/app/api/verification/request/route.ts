@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { checkEmailVerification } from '@/lib/api-middleware';
+import { verifyToken } from '@/lib/api-middleware';
 import { sql } from '@/lib/db';
 import { uploadBase64Image } from '@/lib/file-upload';
 
@@ -8,14 +8,13 @@ import { uploadBase64Image } from '@/lib/file-upload';
 export async function POST(request: NextRequest) {
     try {
         // Check email verification for submitting verification requests
-        const { user, error } = await checkEmailVerification(request, 'submit_verification');
-        if (error) return error;
+       const user = await verifyToken(request);
         if (!user) {
         console.log('❌ User not found');
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
         const userId = user.id;
-        console.log('✅ User authenticated for verification request:', userID);
+        console.log('✅ User authenticated for verification request:', userId);
 
         const body = await request.json();
         const userEmail = user.email;

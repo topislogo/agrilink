@@ -17,10 +17,11 @@ import {
   paymentTerms as paymentTermsTable,
   sellerCustomDeliveryOptions,
   sellerCustomPaymentTerms,
-  offers as offersTable
+  offers as offersTable,
+  offers
 } from '@/lib/db/schema';
 import { eq, desc, and, sql, inArray } from 'drizzle-orm';
-import { checkEmailVerification } from '@/lib/api-middleware';
+import { verifyToken } from '@/lib/api-middleware';
 
 
 
@@ -143,14 +144,16 @@ export async function GET(request: NextRequest) {
     // Calculate actual available quantity by subtracting pending/accepted offers
     const productsWithCalculatedStock = await Promise.all(products.map(async (product) => {
       // Get pending and accepted offers for this product
-      const pendingOffersResult = await sql`
-        SELECT COALESCE(SUM(quantity), 0) as total_offered
-        FROM offers 
-        WHERE "productId" = ${product.id} 
-        AND status IN ('pending', 'accepted')
-      `;
+      const pendingOffersResult = await db
+      .select({ total_offered: sql<number>`COALESCE(SUM(quantity), 0)` })
+      .from(offers)
+      .where(
+        and(
+        eq(offers.productId, product.id),
+        inArray(offers.status, ['pending', 'accepted']))
+      );
       
-      const totalOffered = pendingOffersResult[0]?.total_offered || 0;
+      const totalOffered = Number(pendingOffersResult[0]?.total_offered) || 0;
       
       // Calculate actual available quantity
       const availableStock = product.availableStock ? parseInt(product.availableStock) : 0;
@@ -281,16 +284,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Product creation API called');
-    // Check email verification for creating products
-    const { user, error } = await checkEmailVerification(request, 'create_product');
-    if (error) return error;
+    const user = await verifyToken(request);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
-
     const userId = user.id;
 
     const body = await request.json();
@@ -512,8 +512,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Failed to create product in database', 
-          details: dbError.message
-        },
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'},
         { status: 500 }
       );
     }

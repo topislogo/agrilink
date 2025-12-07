@@ -16,7 +16,7 @@ import {
   conversations
 } from '@/lib/db/schema';
 import { eq, and, or, desc } from 'drizzle-orm';
-import { checkEmailVerification } from '@/lib/api-middleware';
+import { verifyToken as verifyTokenApi } from '@/lib/api-middleware';
 import { sql as dbSql } from '@/lib/db';
 
 function verifyToken(request: NextRequest) {
@@ -321,9 +321,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🎯 Offers API - POST request received');
     
-    // Check email verification for making offers
-    const { user, error } = await checkEmailVerification(request, 'make_offer');
-    if (error) return error;
+    const user = await verifyTokenApi(request);
     if (!user) {
       console.log('❌ Offers API - User not found');
       return NextResponse.json(
