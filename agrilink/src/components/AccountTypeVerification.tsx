@@ -233,10 +233,19 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
     console.log('📋 User verified:', currentUser.verified);
     console.log('📋 User verificationStatus:', currentUser.verificationStatus);
     
+    // Don't reset state if we're currently submitting (prevents race condition)
+    if (isSubmittingVerification || verificationSubmitted) {
+      console.log('⏸️ Skipping state sync - submission in progress');
+      return;
+    }
+    
     // Check if AgriLink verification was already requested or completed
     const userRequested = (currentUser as any).agriLinkVerificationRequested || (currentUser as any).verificationSubmitted;
     const isVerified = currentUser.verified;
-    const isUnderReview = currentUser.verificationStatus === 'under-review';
+    // Check for both 'pending' and 'under-review'/'under_review' statuses (API uses snake_case, some code uses kebab-case)
+    const isUnderReview = currentUser.verificationStatus === 'under-review' || 
+                          currentUser.verificationStatus === 'under_review' || 
+                          currentUser.verificationStatus === 'pending';
     
     // For rejected users, reset agriLinkVerificationRequested to false so they can re-upload
     const isRejected = currentUser.verificationStatus === 'rejected';
@@ -247,8 +256,9 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
     // But for rejected users, reset to false so they can re-upload documents
     setAgriLinkVerificationRequested(Boolean(shouldShowAsRequested));
     
-    // Reset verification submitted flag when user data refreshes
-    if (userRequested || isVerified) {
+    // Reset verification submitted flag when user data refreshes AND we have confirmed status
+    // Don't reset if status is still not updated (prevents premature reset)
+    if ((userRequested || isVerified) && (isUnderReview || isVerified)) {
       setVerificationSubmitted(false);
     }
     
@@ -264,11 +274,20 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
     });
     
     setShowSuccessMessage(hasRequestedVerification && isUnderReview && isNotYetVerified);
-  }, [currentUser.verificationStatus, currentUser.verified, (currentUser as any).agriLinkVerificationRequested]);
+  }, [
+    currentUser.verificationStatus, 
+    currentUser.verified, 
+    (currentUser as any).agriLinkVerificationRequested,
+    (currentUser as any).verificationSubmitted, // Add this to dependency array
+    isSubmittingVerification, // Add this to prevent race condition
+    verificationSubmitted // Add this to prevent race condition
+  ]);
 
   // Keep button dimmed/disabled on refresh while under review
   useEffect(() => {
-    if (currentUser.verificationStatus === 'under-review' && !currentUser.verified) {
+    const isUnderReview = currentUser.verificationStatus === 'under-review' || 
+                          currentUser.verificationStatus === 'under_review';
+    if (isUnderReview && !currentUser.verified) {
       setIsSubmittingVerification(true);
       setVerificationSubmitted(true);
     } else {
@@ -276,6 +295,49 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
       setVerificationSubmitted(false);
     }
   }, [currentUser.verificationStatus, currentUser.verified]);
+
+  // Check verification request status directly from API if local state suggests it should be requested
+  // This helps catch cases where user profile hasn't updated yet
+  useEffect(() => {
+    const checkVerificationRequestStatus = async () => {
+      // Only check if we think verification was requested but user data doesn't reflect it
+      const isUnderReview = currentUser.verificationStatus === 'under-review' || 
+                            currentUser.verificationStatus === 'under_review';
+      if (agriLinkVerificationRequested && !currentUser.verified && 
+          !isUnderReview && 
+          currentUser.verificationStatus !== 'pending') {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) return;
+
+          const response = await fetch('/api/user/verification-status', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const verificationRequest = data.verificationRequest;
+            
+            // If there's a pending/under_review request, keep the state as requested
+            if (verificationRequest && 
+                (verificationRequest.status === 'pending' || verificationRequest.status === 'under_review')) {
+              console.log('✅ Found pending verification request, keeping state as requested');
+              setAgriLinkVerificationRequested(true);
+              setShowSuccessMessage(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking verification request status:', error);
+        }
+      }
+    };
+
+    // Only check after a delay to avoid too many API calls
+    const timeoutId = setTimeout(checkVerificationRequestStatus, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [agriLinkVerificationRequested, currentUser.verificationStatus, currentUser.verified]);
   
   // Monitor verification status changes to hide success message when status changes
   useEffect(() => {
@@ -1003,15 +1065,19 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
         setVerificationSubmitted(true);
         success = true;
         
-        // Call verification complete callback to refresh user data in parent components
-        if (onVerificationComplete) {
-          onVerificationComplete();
-        }
-        
-        // Reset submitting state after a delay to allow parent state to stabilize
-        setTimeout(() => {
-          setIsSubmittingVerification(false);
-        }, 500);
+        // Wait a bit for database to update, then refresh user data
+        // This ensures the API returns the updated verification status
+        setTimeout(async () => {
+          // Call verification complete callback to refresh user data in parent components
+          if (onVerificationComplete) {
+            onVerificationComplete();
+          }
+          
+          // Reset submitting state after refresh completes
+          setTimeout(() => {
+            setIsSubmittingVerification(false);
+          }, 500);
+        }, 1000); // Wait 1 second for database update to propagate
         
         // Success message will remain visible until admin accepts/rejects the request
         
@@ -1254,7 +1320,7 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
               </div>
             </CardContent>
           </Card>
-        ) : currentUser.verificationStatus === 'under-review' && !agriLinkVerificationRequested ? (
+        ) : (currentUser.verificationStatus === 'under-review' || currentUser.verificationStatus === 'under_review') && !agriLinkVerificationRequested ? (
           /* Under Review - Show Status */
           <Card className="bg-orange-50 border-orange-200">
             <CardContent className="p-6">
@@ -1412,7 +1478,7 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
                                 View
                               </Button>
                               {/* Only show remove button if not submitted for review and AgriLink verification not requested */}
-                              {currentUser.verificationStatus !== 'under-review' && !currentUser.verified && !agriLinkVerificationRequested && (
+                              {(currentUser.verificationStatus !== 'under-review' && currentUser.verificationStatus !== 'under_review') && !currentUser.verified && !agriLinkVerificationRequested && (
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
@@ -1615,7 +1681,7 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
                     <>
                       <Button 
                         onClick={handleSaveBusinessInfo}
-                        disabled={isSavingBusiness || (currentUser as any).verificationStatus === 'under-review'}
+                        disabled={isSavingBusiness || (currentUser as any).verificationStatus === 'under-review' || (currentUser as any).verificationStatus === 'under_review'}
                         className="flex-1"
                       >
                         {isSavingBusiness ? 'Saving...' : 'Save Business Info'}
@@ -1717,7 +1783,7 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
                           View
                         </Button>
                         {/* Only show remove button if not submitted for review and AgriLink verification not requested */}
-                        {currentUser.verificationStatus !== 'under-review' && !currentUser.verified && !agriLinkVerificationRequested && (
+                        {(currentUser.verificationStatus !== 'under-review' && currentUser.verificationStatus !== 'under_review') && !currentUser.verified && !agriLinkVerificationRequested && (
                           <Button 
                             variant="ghost" 
                             size="sm"
