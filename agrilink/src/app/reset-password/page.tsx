@@ -50,8 +50,14 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (formData.newPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (formData.newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.newPassword.match(/[a-z]/) === null || formData.newPassword.match(/[A-Z]/) === null || formData.newPassword.match(/\d/) === null) {
+      setError('Password needs a number, a lowercase letter, and an uppercase letter');
       setIsLoading(false);
       return;
     }
@@ -156,7 +162,7 @@ function ResetPasswordContent() {
                     onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
                     className="pl-10 pr-10"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                   <button
                     type="button"
@@ -180,7 +186,7 @@ function ResetPasswordContent() {
                     onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                     className="pl-10 pr-10"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                   <button
                     type="button"

@@ -159,15 +159,14 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
       setEmailLoading(false);
     }
   };
-  const [formData, setFormData] = useState(() => {
-    return {
+  const [formData, setFormData] = useState<{[key: string]: any;
+    }>({
       name: user.name || '',
       phone: user.phone || '',
       location: user.location || '',
       profileImage: user.profileImage || '',
       region: user.region || '',
       businessName: user.businessName || '',
-    };
   });
   
   // State for location editing (region + city)
@@ -246,7 +245,7 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
       });
       
       if (onUpdate) {
-        const result = await onUpdate({ profileImage: dataUrl });
+        const result = await onUpdate({ profileImage: dataUrl }) as any;
         // Use the S3 key returned from API, fallback to dataUrl if not available
         const imageKey = result?.user?.profileImage || result?.profileImage || dataUrl;
         console.log('🖼️ Profile component - Image upload result:', result);
@@ -287,14 +286,14 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
 
   const getAvailableCities = () => {
     if (!formData.region) return [];
-    const region = myanmarRegions[formData.region];
+    const region = myanmarRegions[formData.region as keyof typeof myanmarRegions];
     return region ? region.cities : [];
   };
   
   // Get available cities for editing location
   const getAvailableCitiesForEditing = () => {
     if (!editingLocation.region) return [];
-    const region = myanmarRegions[editingLocation.region];
+    const region = myanmarRegions[editingLocation.region as keyof typeof myanmarRegions];
     return region ? region.cities : [];
   };
   
@@ -322,8 +321,13 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters long');
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long');
+      return;
+    }
+
+    if (passwordData.newPassword.match(/[a-z]/) === null || passwordData.newPassword.match(/[A-Z]/) === null || passwordData.newPassword.match(/\d/) === null) {
+      setPasswordError('Password needs a number, a lowercase letter, and an uppercase letter');
       return;
     }
 
@@ -654,7 +658,7 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
                       {pendingEmail && (
                         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <div className="flex items-start gap-2">
-                            <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                               <Mail className="w-3 h-3 text-blue-600" />
                             </div>
                             <div className="flex-1">

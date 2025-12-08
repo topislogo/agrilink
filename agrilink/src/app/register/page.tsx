@@ -73,8 +73,12 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return false;
     }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return false;
+    }
+    if (formData.password.match(/[a-z]/) === null || formData.password.match(/[A-Z]/) === null || formData.password.match(/\d/) === null) {
+      setError('Password needs a number, a lowercase letter, and an uppercase letter');
       return false;
     }
     if (!formData.email.includes('@')) {
@@ -212,7 +216,7 @@ export default function RegisterPage() {
           <Input
             id="password"
             type={showPassword ? "text" : "password"}
-            placeholder="Create a password (min. 6 characters)"
+            placeholder="Create a password (min. 8 characters)"
             value={formData.password}
             onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
             className="pl-10 pr-10"
