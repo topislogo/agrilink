@@ -82,8 +82,14 @@ class S3UploadService {
       const base64String = matches[2];
       
       // Validate mime type
-      if (!mimeType.startsWith('image/')) {
-        throw new Error('File must be an image');
+      // if (!mimeType.startsWith('image/')) {
+      //   throw new Error('File must be an image');
+      // }
+      const isImage = mimeType.startsWith('image/');
+      const isPDF = mimeType === 'application/pdf';
+
+      if (!isImage && !isPDF) {
+        throw new Error('File must be an image or PDF');
       }
 
       // Convert base64 to buffer
