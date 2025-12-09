@@ -43,6 +43,7 @@ interface Conversation {
     location: string;
     rating: number;
     verified: boolean;
+    profileImage?: string;
   };
   lastMessage: {
     content: string;
@@ -185,11 +186,19 @@ export function Messages({ currentUser, onBack, onStartChat }: MessagesProps) {
           buyerProfileImage: (conv as any).buyer?.profile_image
         });
       }
+      // The API returns conversations with an 'otherParty' object that already contains all the other party's info
+      // Check if the API response has the new structure with 'otherParty'
+      const hasOtherPartyStructure = (conv as any).otherParty;
+      
       // Determine the other party (not the current user)
-      const otherPartyId = conv.buyerId === effectiveCurrentUser?.id ? conv.sellerId : conv.buyerId;
+      const otherPartyId = hasOtherPartyStructure 
+        ? (conv as any).otherParty.id 
+        : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerId : conv.buyerId);
       
       // Get other party name from conversation data
-      const otherPartyName = conv.buyerId === effectiveCurrentUser?.id ? conv.sellerName : conv.buyerName;
+      const otherPartyName = hasOtherPartyStructure 
+        ? (conv as any).otherParty.name 
+        : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerName : conv.buyerName);
       
       // Use unread count from Neon database conversation data
       const unreadCount = conv.unreadCount || 0;
@@ -200,24 +209,44 @@ export function Messages({ currentUser, onBack, onStartChat }: MessagesProps) {
       const finalConversation = {
         id: conv.id,
         productId: conv.productId,
-        productName: conv.productName || 'Unknown Product',
-        productImage: conv.productImage || 'https://images.unsplash.com/photo-1546470427-227c013b2b5f?w=400&h=300&fit=crop',
+        productName: hasOtherPartyStructure ? (conv as any).productName : (conv.productName || 'Unknown Product'),
+        productImage: hasOtherPartyStructure ? (conv as any).productImage : (conv.productImage || 'https://images.unsplash.com/photo-1546470427-227c013b2b5f?w=400&h=300&fit=crop'),
         otherParty: {
           id: otherPartyId,
           name: otherPartyName || 'Unknown User',
-          type: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerType : conv.buyerType,
-          location: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerLocation : conv.buyerLocation || 'Unknown Location',
-          rating: conv.buyerId === effectiveCurrentUser?.id ? (conv as any).sellerRating : (conv as any).buyerRating,
-          verified: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerVerified : conv.buyerVerified,
-          profileImage: conv.buyerId === effectiveCurrentUser?.id ? (conv as any).seller?.profile_image : (conv as any).buyer?.profile_image,
+          type: hasOtherPartyStructure 
+            ? (conv as any).otherParty.type 
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerType : conv.buyerType),
+          location: hasOtherPartyStructure 
+            ? (conv as any).otherParty.location 
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerLocation : conv.buyerLocation || 'Unknown Location'),
+          rating: hasOtherPartyStructure 
+            ? (conv as any).otherParty.rating 
+            : (conv.buyerId === effectiveCurrentUser?.id ? (conv as any).sellerRating : (conv as any).buyerRating),
+          verified: hasOtherPartyStructure 
+            ? (conv as any).otherParty.verified 
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerVerified : conv.buyerVerified),
+          profileImage: hasOtherPartyStructure 
+            ? (conv as any).otherParty.profileImage 
+            : (conv.buyerId === effectiveCurrentUser?.id ? (conv as any).seller?.profile_image : (conv as any).buyer?.profile_image),
           // Add complete verification data for badge display
-          accountType: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerAccountType : conv.buyerAccountType,
-          phoneVerified: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerPhoneVerified : conv.buyerPhoneVerified,
-          verificationStatus: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerVerificationStatus : conv.buyerVerificationStatus,
-          verificationSubmitted: conv.buyerId === effectiveCurrentUser?.id ? conv.sellerVerificationSubmitted : conv.buyerVerificationSubmitted,
-          businessVerified: conv.buyerId === effectiveCurrentUser?.id ? 
-            (conv.sellerAccountType === 'business' && conv.sellerVerified) : 
-            (conv.buyerAccountType === 'business' && conv.buyerVerified)
+          accountType: hasOtherPartyStructure 
+            ? (conv as any).otherParty.accountType 
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerAccountType : conv.buyerAccountType),
+          phoneVerified: hasOtherPartyStructure 
+            ? (conv as any).otherParty.phoneVerified 
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerPhoneVerified : conv.buyerPhoneVerified),
+          verificationStatus: hasOtherPartyStructure 
+            ? (conv as any).otherParty.verificationStatus 
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerVerificationStatus : conv.buyerVerificationStatus),
+          verificationSubmitted: hasOtherPartyStructure 
+            ? false // API doesn't return this in otherParty structure
+            : (conv.buyerId === effectiveCurrentUser?.id ? conv.sellerVerificationSubmitted : conv.buyerVerificationSubmitted),
+          businessVerified: hasOtherPartyStructure 
+            ? ((conv as any).otherParty.accountType === 'business' && (conv as any).otherParty.verified)
+            : (conv.buyerId === effectiveCurrentUser?.id ? 
+              (conv.sellerAccountType === 'business' && conv.sellerVerified) : 
+              (conv.buyerAccountType === 'business' && conv.buyerVerified))
         },
         lastMessage: lastMessageFromConv ? {
           content: lastMessageFromConv,
@@ -568,7 +597,7 @@ export function Messages({ currentUser, onBack, onStartChat }: MessagesProps) {
                 currentUserVerified={effectiveCurrentUser?.verified || false}
                 currentUserType={effectiveCurrentUser?.userType}
                 currentUser={effectiveCurrentUser}
-                otherPartyProfileImage={(conversation.otherParty as any).profileImage}
+                otherPartyProfileImage={conversation.otherParty.profileImage}
                 otherPartyVerificationStatus={{
                   trustLevel: (conversation.otherParty.verified || conversation.otherParty.phoneVerified) ? 'id-verified' : 'unverified',
                   tierLabel: (conversation.otherParty.verified || conversation.otherParty.phoneVerified) ? 'Verified' : 'Unverified',
@@ -618,7 +647,7 @@ export function Messages({ currentUser, onBack, onStartChat }: MessagesProps) {
                 currentUserVerified={effectiveCurrentUser?.verified || false}
                 currentUserType={effectiveCurrentUser?.userType}
                 currentUser={effectiveCurrentUser}
-                otherPartyProfileImage={(conversation.otherParty as any).profileImage}
+                otherPartyProfileImage={conversation.otherParty.profileImage}
                 otherPartyVerificationStatus={{
                   trustLevel: (conversation.otherParty.verified || conversation.otherParty.phoneVerified) ? 'id-verified' : 'unverified',
                   tierLabel: (conversation.otherParty.verified || conversation.otherParty.phoneVerified) ? 'Verified' : 'Unverified',

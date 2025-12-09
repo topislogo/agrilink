@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, sql } from '@/lib/db';
-import { messages as messagesTable, conversations as conversationsTable } from '@/lib/db/schema';
+import { messages as messagesTable, conversations as conversationsTable, products as productsTable, users as usersTable } from '@/lib/db/schema';
 import { eq, and, desc, ne } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
+import { offerNotificationService } from '@/services/offerNotificationService';
 
 // Helper function to verify JWT token
 function verifyToken(request: NextRequest) {
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
       .select({
         buyerId: conversationsTable.buyerId,
         sellerId: conversationsTable.sellerId,
+        productId: conversationsTable.productId,
         unreadCount: conversationsTable.unreadCount
       })
       .from(conversationsTable)
@@ -146,6 +148,44 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       })
       .where(eq(conversationsTable.id, conversationId));
+
+    // Create notification for new message (only if recipient is different from sender)
+    if (isRecipient) {
+      try {
+        // Get product information for the notification
+        const productData = await db
+          .select({ name: productsTable.name })
+          .from(productsTable)
+          .where(eq(productsTable.id, conv.productId))
+          .limit(1);
+
+        // Get sender name
+        const senderData = await db
+          .select({ name: usersTable.name })
+          .from(usersTable)
+          .where(eq(usersTable.id, senderId))
+          .limit(1);
+
+        const productName = productData[0]?.name || 'a product';
+        const senderName = senderData[0]?.name || 'Someone';
+
+        // Create or update notification using the grouped notification method
+        // This will update existing notification for the same conversation instead of creating duplicates
+        const messagePreview = content.substring(0, 50) + (content.length > 50 ? '...' : '');
+        await offerNotificationService.updateOrCreateChatNotification(
+          recipientId,
+          conversationId,
+          senderName,
+          productName,
+          messagePreview
+        );
+
+        console.log(`🔔 Chat message notification created for user ${recipientId}`);
+      } catch (notificationError) {
+        console.error('❌ Failed to create chat message notification:', notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
 
     const message = {
       id: newMessage.id,

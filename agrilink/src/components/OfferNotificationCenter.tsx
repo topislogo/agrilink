@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Bell, X, CheckCircle, XCircle, Clock, FileText, Truck } from 'lucide-react';
+import { Bell, X, CheckCircle, XCircle, Clock, FileText, Truck, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { ChatInterface } from './ChatInterface';
+import { useAuth } from '../hooks/useAuth';
 
 interface Notification {
   id: string;
@@ -20,17 +22,46 @@ interface Notification {
 
 interface OfferNotificationCenterProps {
   userId: string;
+  currentUser?: any; // Pass currentUser as prop instead of using useAuth
 }
 
-export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps) {
+export function OfferNotificationCenter({ userId, currentUser: propCurrentUser }: OfferNotificationCenterProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const hasAutoMarkedRef = useRef(false);
+  const [showChatPopup, setShowChatPopup] = useState(false);
+  const [chatData, setChatData] = useState<any>(null);
+  const { user: authUser } = useAuth();
+  
+  // Use prop currentUser if available, otherwise fallback to authUser
+  const currentUser = propCurrentUser || authUser;
+  
+  // Debug chat popup state
+  useEffect(() => {
+    if (showChatPopup) {
+      console.log('🔔 Chat popup state:', {
+        showChatPopup,
+        hasChatData: !!chatData,
+        hasCurrentUser: !!currentUser,
+        hasPropUser: !!propCurrentUser,
+        hasAuthUser: !!authUser
+      });
+    }
+  }, [showChatPopup, chatData, currentUser, propCurrentUser, authUser]);
 
   useEffect(() => {
     if (userId) {
       fetchNotifications();
+      
+      // Set up polling to check for new notifications every 5 seconds
+      const pollInterval = setInterval(() => {
+        fetchNotifications();
+      }, 5000); // Poll every 5 seconds
+      
+      return () => {
+        clearInterval(pollInterval);
+      };
     }
   }, [userId]);
 
@@ -99,10 +130,124 @@ export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps
     }
   }, [isOpen, unreadCount, markAllAsRead]);
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read) {
       markAsRead(notification.id);
     }
+    
+    // Check if this is a chat message notification
+    if (notification.link && notification.link.includes('/messages?conversation=')) {
+      // Extract conversation ID from the link
+      const conversationIdMatch = notification.link.match(/conversation=([^&]+)/);
+      const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
+      
+      if (conversationId) {
+        try {
+          // Fetch conversation details to get product and other party info
+          const response = await fetch(`/api/chat/conversations`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const conversation = data.conversations?.find((c: any) => c.id === conversationId);
+            
+            if (conversation && conversation.otherParty) {
+              // Open popup immediately with conversation data (instant)
+              const initialChatData = {
+                conversationId: conversationId,
+                otherPartyId: conversation.otherParty.id,
+                otherPartyName: conversation.otherParty.name,
+                otherPartyType: conversation.otherParty.type,
+                otherPartyAccountType: conversation.otherParty.accountType || 'individual',
+                otherPartyLocation: conversation.otherParty.location || '',
+                otherPartyRating: conversation.otherParty.rating || 0,
+                otherPartyVerified: conversation.otherParty.verified || false,
+                otherPartyProfileImage: conversation.otherParty.profileImage, // Use from conversation first
+                otherPartyVerificationStatus: {
+                  trustLevel: conversation.otherParty.verified 
+                    ? (conversation.otherParty.accountType === 'business' ? 'business-verified' : 'id-verified')
+                    : 'unverified',
+                  tierLabel: conversation.otherParty.verified 
+                    ? (conversation.otherParty.accountType === 'business' ? 'Business ✓' : 'Verified')
+                    : 'Unverified',
+                  levelBadge: conversation.otherParty.verified ? '✓' : '⚠'
+                },
+                productId: conversation.productId,
+                productName: conversation.productName,
+                productImage: conversation.productImage,
+                productPrice: 0,
+                productUnit: 'units',
+                productAvailableQuantity: '0'
+              };
+              
+              // Open popup immediately (no waiting)
+              setChatData(initialChatData);
+              setShowChatPopup(true);
+              setIsOpen(false);
+              
+              // Fetch additional data in parallel (non-blocking, updates in background)
+              Promise.all([
+                // Fetch other party's full profile to get better profile image
+                (async () => {
+                  try {
+                    const profileRoute = (conversation.otherParty.type === 'farmer' || conversation.otherParty.type === 'trader')
+                      ? `/api/seller/${conversation.otherParty.id}`
+                      : `/api/user/${conversation.otherParty.id}`;
+                    
+                    const profileResponse = await fetch(profileRoute);
+                    if (profileResponse.ok) {
+                      return await profileResponse.json();
+                    }
+                  } catch (error) {
+                    console.error('Error fetching other party profile:', error);
+                  }
+                  return null;
+                })(),
+                // Fetch product details
+                (async () => {
+                  try {
+                    const productResponse = await fetch(`/api/products/${conversation.productId}`);
+                    if (productResponse.ok) {
+                      const productData = await productResponse.json();
+                      return productData.product;
+                    }
+                  } catch (error) {
+                    console.error('Error fetching product details:', error);
+                  }
+                  return null;
+                })()
+              ]).then(([otherPartyFullData, productDetails]) => {
+                // Update chat data with fetched information (always update, even if popup closed)
+                if (otherPartyFullData || productDetails) {
+                  setChatData(prev => {
+                    if (!prev) return prev; // Don't update if chat data was cleared
+                    return {
+                      ...prev,
+                      otherPartyRating: otherPartyFullData?.ratings?.rating || prev.otherPartyRating,
+                      otherPartyVerified: otherPartyFullData?.verified ?? prev.otherPartyVerified,
+                      otherPartyProfileImage: otherPartyFullData?.profileImage || otherPartyFullData?.seller?.profileImage || prev.otherPartyProfileImage,
+                      productPrice: productDetails?.price || prev.productPrice,
+                      productUnit: productDetails?.quantityUnit || prev.productUnit,
+                      productAvailableQuantity: productDetails?.availableQuantity || prev.productAvailableQuantity
+                    };
+                  });
+                }
+              });
+              
+              return; // Don't navigate, we're opening popup instead
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching conversation details:', error);
+          // Fallback to navigation if fetch fails
+        }
+      }
+    }
+    
+    // For other notification types or if chat popup failed, navigate normally
     if (notification.link) {
       window.location.href = notification.link;
     }
@@ -110,6 +255,7 @@ export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps
   };
 
   const getNotificationIcon = (title: string) => {
+    if (title.includes('New Message')) return <MessageSquare className="w-4 h-4 text-blue-500" />;
     if (title.includes('Accepted')) return <CheckCircle className="w-4 h-4 text-green-500" />;
     if (title.includes('Rejected')) return <XCircle className="w-4 h-4 text-red-500" />;
     if (title.includes('Expired')) return <Clock className="w-4 h-4 text-yellow-500" />;
@@ -122,6 +268,7 @@ export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps
   };
 
   return (
+    <>
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
@@ -184,5 +331,50 @@ export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps
         </ScrollArea>
       </PopoverContent>
     </Popover>
+    
+    {/* Chat Popup */}
+    {showChatPopup && chatData && (
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-white rounded-lg shadow-2xl w-96 h-[500px] flex flex-col border border-gray-200">
+          {currentUser ? (
+            <ChatInterface
+            otherPartyName={chatData.otherPartyName}
+            otherPartyType={chatData.otherPartyType}
+            otherPartyAccountType={chatData.otherPartyAccountType}
+            otherPartyLocation={chatData.otherPartyLocation}
+            otherPartyRating={chatData.otherPartyRating}
+            productName={chatData.productName}
+            productId={chatData.productId}
+            otherPartyId={chatData.otherPartyId}
+            conversationId={chatData.conversationId}
+            onClose={() => {
+              setShowChatPopup(false);
+              setChatData(null);
+            }}
+            otherPartyVerified={chatData.otherPartyVerified}
+            currentUserVerified={currentUser.verified || false}
+            currentUserType={currentUser.userType || 'buyer'}
+            otherPartyProfileImage={chatData.otherPartyProfileImage}
+            otherPartyVerificationStatus={chatData.otherPartyVerificationStatus}
+            product={{
+              id: chatData.productId,
+              name: chatData.productName,
+              price: chatData.productPrice || 0,
+              unit: chatData.productUnit || 'units',
+              image: chatData.productImage,
+              sellerId: chatData.otherPartyId,
+              availableQuantity: chatData.productAvailableQuantity || '0'
+            }}
+            currentUser={currentUser}
+          />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-gray-500">Loading user data...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </>
   );
 }
