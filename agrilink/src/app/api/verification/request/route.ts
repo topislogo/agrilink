@@ -60,11 +60,11 @@ export async function POST(request: NextRequest) {
 
         if (existingOpen.length > 0) {
         console.log('ℹ️ Existing open verification request found, returning existing ID:', existingOpen[0].id);
-        // Ensure user_verification reflects under_review state
+        // Ensure user_verification reflects under-review state
         await sql`
             UPDATE user_verification 
             SET 
-            "verificationStatus" = 'under_review',
+            "verificationStatus" = 'under-review',
             "verificationSubmitted" = true,
             "updatedAt" = NOW()
             WHERE "userId" = ${userId}
@@ -220,6 +220,30 @@ export async function POST(request: NextRequest) {
         console.log('✅ Verification request inserted with ID:', result[0].id);
 
         console.log('🔄 Updating user verification status...');
+        
+        // Update user_verification table to reflect under-review status
+        await sql`
+            UPDATE user_verification 
+            SET 
+                "verificationStatus" = 'under-review',
+                "verificationSubmitted" = true,
+                "updatedAt" = NOW()
+            WHERE "userId" = ${userId}
+        `;
+        
+        // If no user_verification record exists, create one
+        const existingVerification = await sql`
+            SELECT "userId" FROM user_verification WHERE "userId" = ${userId} LIMIT 1
+        `;
+        
+        if (existingVerification.length === 0) {
+            await sql`
+                INSERT INTO user_verification ("userId", "verificationStatus", "verificationSubmitted", "createdAt", "updatedAt")
+                VALUES (${userId}, 'under-review', true, NOW(), NOW())
+            `;
+        }
+        
+        console.log('✅ User verification status updated to under-review');
 
         if (businessName || businessDescription || businessLicenseNumber || businessHours || specialties || policies) {
             console.log('🔄 Handling business details...');

@@ -1026,11 +1026,13 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
         setShowSuccessMessage(true);
         
         // Update user profile to track the request
+        // Note: The verification request API will also update user_verification table,
+        // but we update here as well for immediate UI feedback
         console.log('🔄 Updating user profile with verification request data...');
         const userUpdateData = {
           agriLinkVerificationRequested: true,
           agriLinkVerificationRequestedAt: new Date().toISOString(),
-          verificationStatus: 'under_review',
+          verificationStatus: 'under-review', // Use hyphen format to match dashboard expectations
           verificationSubmittedAt: new Date().toISOString(),
           verificationDocuments: verificationDocsForSubmission
         };
