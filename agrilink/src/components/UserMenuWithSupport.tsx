@@ -510,7 +510,7 @@ export function UserMenuWithSupport({ user, onLogout, onViewStorefront, onUpdate
               <Shield className={`mr-2 h-4 w-4 ${getVerificationStatus(user).color}`} />
               <span>
                 {user.verified ? 'Verification Status' : 
-                 user.verificationStatus === 'under-review' ? 'Verification' :
+                 (user.verificationStatus === 'under-review' || user.verificationStatus === 'under_review') ? 'Verification' :
                  user.verificationSubmitted ? 'Verification Status' : 'Get Verified'}
               </span>
               {getVerificationStatus(user).status === 'under-review' && (

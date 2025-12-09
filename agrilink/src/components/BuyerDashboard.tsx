@@ -107,7 +107,10 @@ export function BuyerDashboard({
             return 'rejected';
           }
           
-          if ((user as any).verificationStatus === 'under-review' || (user as any).verificationSubmitted) {
+          // Check for under-review status (support both formats for backward compatibility)
+          if ((user as any).verificationStatus === 'under-review' || 
+              (user as any).verificationStatus === 'under_review' || 
+              (user as any).verificationSubmitted) {
             return 'under-review';
           }
           

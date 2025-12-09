@@ -696,7 +696,9 @@ export function getUserVerificationLevel(user: any): string {
   
   // Check for under review - but only if not already verified
   // Priority: Approved status overrides under-review status
+  // Support both 'under-review' (hyphen) and 'under_review' (underscore) formats for backward compatibility
   if (user.verificationStatus === 'under-review' || 
+      user.verificationStatus === 'under_review' ||
       (user.verificationSubmitted && user.verificationStatus !== 'verified')) {
     return 'under-review';
   }

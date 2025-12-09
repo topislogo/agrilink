@@ -227,7 +227,10 @@ export function FreshDashboard({
             return 'rejected';
           }
           
-          if (user.verificationStatus === 'under-review' || user.verificationSubmitted) {
+          // Check for under-review status (support both formats for backward compatibility)
+          if (user.verificationStatus === 'under-review' || 
+              user.verificationStatus === 'under_review' || 
+              user.verificationSubmitted) {
             return 'under-review';
           }
           
