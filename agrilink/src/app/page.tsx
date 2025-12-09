@@ -202,8 +202,15 @@ export default function HomePage() {
     router.push(`/seller/${sellerId}`);
   };
 
-  const handleChatClick = (sellerId: string) => {
-    router.push(`/messages?sellerId=${sellerId}`);
+  const handleChatClick = async (sellerId: string) => {
+    // Find a product from this seller to use for the chat
+    const sellerProduct = products.find(p => p.seller.id === sellerId);
+    if (sellerProduct) {
+      await handleOpenChat(sellerId, sellerProduct.id);
+    } else {
+      // If no product found, navigate to messages
+      router.push(`/messages?sellerId=${sellerId}`);
+    }
   };
 
   const handleOfferClick = (productId: string) => {

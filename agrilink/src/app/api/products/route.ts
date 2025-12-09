@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
           name: productsTable.name,
           description: productsTable.description,
           createdAt: productsTable.createdAt,
+          updatedAt: productsTable.updatedAt,
           price: productsTable.price,
           quantity: productsTable.quantity,
         quantityUnit: productsTable.quantityUnit,
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
           name: productsTable.name,
           description: productsTable.description,
           createdAt: productsTable.createdAt,
+          updatedAt: productsTable.updatedAt,
           price: productsTable.price,
           quantity: productsTable.quantity,
         quantityUnit: productsTable.quantityUnit,
@@ -214,6 +216,8 @@ export async function GET(request: NextRequest) {
       description: product.description,
       availableQuantity: product.actualAvailableQuantity?.toString() || product.availableStock, // Use calculated available quantity
       createdAt: product.createdAt,
+      updatedAt: product.updatedAt || product.createdAt, // Use updatedAt, fallback to createdAt
+      lastUpdated: product.updatedAt || product.createdAt, // Also include lastUpdated for backward compatibility
       price: parseFloat(product.price?.toString() || '0') || 0,
       quantity: product.quantity, // No fallback - show actual value (null if not set)
       quantityUnit: product.quantityUnit, // No fallback - show actual value (null if not set)

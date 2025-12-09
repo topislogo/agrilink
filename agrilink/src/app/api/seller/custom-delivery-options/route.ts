@@ -120,10 +120,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if option already exists for this seller
+    // Check if option already exists for this seller (only active ones)
     const existingOption = await sql`
       SELECT id FROM seller_custom_delivery_options
-      WHERE "sellerId" = ${sellerId} AND name = ${name.trim()}
+      WHERE "sellerId" = ${sellerId} AND name = ${name.trim()} AND "isActive" = true
       LIMIT 1
     `;
 
@@ -163,12 +163,98 @@ export async function DELETE(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const optionId = searchParams.get('id');
+    const force = searchParams.get('force') === 'true'; // Allow force deletion
+    const currentProductId = searchParams.get('currentProductId'); // Current product being edited (if any)
 
     if (!optionId) {
       return NextResponse.json(
         { message: 'Option ID is required' },
         { status: 400 }
       );
+    }
+
+    // First, get the option name to check for usage
+    const option = await sql`
+      SELECT id, name FROM seller_custom_delivery_options
+      WHERE id = ${optionId} AND "sellerId" = ${sellerId}
+      LIMIT 1
+    `;
+
+    if (option.length === 0) {
+      return NextResponse.json(
+        { message: 'Option not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    // Check if this option is being used by other products (excluding current product if editing)
+    // Note: delivery_options in products table is a UUID array, so we check for the option ID (UUID), not the name
+    let usageCheck;
+    if (currentProductId) {
+      // Check usage in other products (excluding current product)
+      usageCheck = await sql`
+        SELECT COUNT(*) as usage_count
+        FROM products 
+        WHERE "deliveryOptions" @> ARRAY[${optionId}]::uuid[]
+        AND "sellerId" = ${sellerId}
+        AND id != ${currentProductId}
+      `;
+    } else {
+      // Check usage in all products
+      usageCheck = await sql`
+        SELECT COUNT(*) as usage_count
+        FROM products 
+        WHERE "deliveryOptions" @> ARRAY[${optionId}]::uuid[]
+        AND "sellerId" = ${sellerId}
+      `;
+    }
+
+    const usageCount = parseInt(usageCheck[0]?.usage_count || '0');
+    
+    // Only show warning if used in OTHER products (not the current one being edited)
+    if (!force && usageCount > 0) {
+      return NextResponse.json({
+        message: 'Cannot delete option that is in use',
+        error: 'OPTION_IN_USE',
+        usageCount: usageCount,
+        optionName: option[0].name,
+        details: `This delivery option is currently used by ${usageCount} other product(s). Please update those products first or use force deletion.`
+      }, { status: 409 });
+    }
+
+    // If force deleting, remove the option from all products that use it (including current product)
+    if (force) {
+      // Get total usage count (including current product)
+      const totalUsageCheck = await sql`
+        SELECT COUNT(*) as usage_count
+        FROM products 
+        WHERE "deliveryOptions" @> ARRAY[${optionId}]::uuid[]
+        AND "sellerId" = ${sellerId}
+      `;
+      const totalUsageCount = parseInt(totalUsageCheck[0]?.usage_count || '0');
+      
+      if (totalUsageCount > 0) {
+        console.log(`🔄 Force deleting: Removing delivery option ${optionId} from ${totalUsageCount} product(s)`);
+        await sql`
+          UPDATE products
+          SET "deliveryOptions" = array_remove("deliveryOptions", ${optionId}::uuid),
+              "updatedAt" = NOW()
+          WHERE "deliveryOptions" @> ARRAY[${optionId}]::uuid[]
+          AND "sellerId" = ${sellerId}
+        `;
+        console.log(`✅ Removed delivery option from ${totalUsageCount} product(s)`);
+      }
+    } else if (currentProductId) {
+      // If not force deleting but we have a current product, remove it from current product only
+      // (since it's only used there, we can safely remove it)
+      await sql`
+        UPDATE products
+        SET "deliveryOptions" = array_remove("deliveryOptions", ${optionId}::uuid),
+            "updatedAt" = NOW()
+        WHERE id = ${currentProductId}
+        AND "sellerId" = ${sellerId}
+      `;
+      console.log(`✅ Removed delivery option from current product`);
     }
 
     // Soft delete by setting isActive to false
@@ -187,7 +273,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: 'Custom delivery option deleted successfully'
+      message: 'Custom delivery option deleted successfully',
+      forceDeleted: force
     });
 
   } catch (error: any) {

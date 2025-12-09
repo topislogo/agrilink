@@ -24,6 +24,7 @@ interface Product {
   quantity?: string;
   minimumOrder?: string;
   availableQuantity?: string;
+  availableStock?: string;
   deliveryOptions?: string[];
   paymentTerms?: string[];
   lastUpdated?: string;
@@ -118,29 +119,59 @@ export default function EditProductPage() {
       });
 
       let responseData;
+      let responseText = '';
       try {
-        responseData = await response.json();
+        responseText = await response.text();
+        console.log('📥 Raw API Response text:', responseText);
+        if (responseText) {
+          responseData = JSON.parse(responseText);
+        } else {
+          responseData = {};
+        }
       } catch (parseError) {
         console.error('❌ Failed to parse API response:', parseError);
-        responseData = {};
+        console.error('❌ Response text was:', responseText);
+        responseData = {
+          message: `Failed to parse API response: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`,
+          rawResponse: responseText.substring(0, 200) // First 200 chars for debugging
+        };
       }
       
       console.log('📥 API Response:', {
         status: response.status,
         statusText: response.statusText,
+        ok: response.ok,
         headers: Object.fromEntries(response.headers.entries()),
         data: responseData,
-        responseText: response.statusText
+        rawResponseLength: responseText.length,
+        rawResponsePreview: responseText.substring(0, 500)
       });
 
       if (!response.ok) {
         console.error('❌ API Error Response:', {
           status: response.status,
           statusText: response.statusText,
+          ok: response.ok,
           data: responseData,
-          isEmpty: Object.keys(responseData).length === 0
+          dataKeys: Object.keys(responseData),
+          isEmpty: Object.keys(responseData).length === 0,
+          hasMessage: !!responseData.message,
+          hasError: !!responseData.error,
+          rawResponse: responseText.substring(0, 1000)
         });
-        throw new Error(responseData.message || `API Error ${response.status}: ${response.statusText}`);
+        
+        // Try to get more information from the response
+        let errorMessage = `API Error ${response.status}: ${response.statusText}`;
+        if (responseData && typeof responseData === 'object') {
+          errorMessage = responseData.message || responseData.error || errorMessage;
+          if (responseData.detail) {
+            errorMessage += ` - ${responseData.detail}`;
+          }
+        } else if (responseText) {
+          errorMessage = `API Error ${response.status}: ${responseText.substring(0, 200)}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       console.log('✅ Product updated successfully, redirecting...');

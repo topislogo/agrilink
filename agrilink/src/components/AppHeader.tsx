@@ -206,7 +206,7 @@ export function AppHeader({ currentUser, onLogout }: AppHeaderProps) {
                 <span className="text-sm text-muted-foreground hidden lg:inline font-medium">
                   Welcome, {currentUser.name.split(" ")[0]}
                 </span>
-                <OfferNotificationCenter userId={currentUser.id} />
+                <OfferNotificationCenter userId={currentUser.id} currentUser={currentUser} />
                 <UserMenuWithSupport
                   user={currentUser}
                   onLogout={onLogout || (() => {})}

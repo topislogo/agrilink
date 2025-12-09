@@ -102,8 +102,15 @@ export function ChatInterface({
 
   // Debug otherPartyProfileImage prop
   useEffect(() => {
-    // Removed debug logging
-  }, [otherPartyProfileImage, otherPartyName, otherPartyId]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🖼️ ChatInterface profile image debug:', {
+        otherPartyProfileImage,
+        otherPartyName,
+        otherPartyId,
+        effectiveCurrentUserProfileImage: effectiveCurrentUser?.profileImage
+      });
+    }
+  }, [otherPartyProfileImage, otherPartyName, otherPartyId, effectiveCurrentUser?.profileImage]);
   
   const { messages, sendMessage, startConversation, loadMessages, startPolling } = useChat();
   const [newMessage, setNewMessage] = useState('');
@@ -913,7 +920,17 @@ export function ChatInterface({
                     const senderName = isOwnMessage ? effectiveCurrentUser?.name : otherPartyName;
                     const senderImage = isOwnMessage ? effectiveCurrentUser?.profileImage : otherPartyProfileImage;
                     
-                    // Removed debug logging
+                    // Debug profile image for messages
+                    if (process.env.NODE_ENV === 'development' && !isOwnMessage) {
+                      console.log('🖼️ Message avatar debug:', {
+                        isOwnMessage,
+                        senderName,
+                        senderImage,
+                        otherPartyProfileImage,
+                        otherPartyId,
+                        messageId: message.id
+                      });
+                    }
                   
                   return (
                     <div

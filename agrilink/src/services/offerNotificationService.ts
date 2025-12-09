@@ -1,7 +1,7 @@
 // Offer Status Notification Service
 import { db } from '@/lib/db';
 import { notifications } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 
 export interface OfferNotification {
   id: string;
@@ -23,7 +23,8 @@ class OfferNotificationService {
     offerTitle: string,
     otherPartyName: string,
     customTitle?: string,
-    customMessage?: string
+    customMessage?: string,
+    customLink?: string
   ) {
     const notificationId = crypto.randomUUID();
     
@@ -63,7 +64,7 @@ class OfferNotificationService {
         body: message,
         type: 'in-app',
         read: false,
-        link: `/offers/${offerId}`,
+        link: customLink || `/offers/${offerId}`,
         createdAt: new Date(),
       });
 
@@ -105,6 +106,26 @@ class OfferNotificationService {
     }
   }
 
+  // Mark all unread notifications as read for a user
+  async markAllAsRead(userId: string) {
+    try {
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, userId),
+            eq(notifications.read, false)
+          )
+        );
+      
+      console.log(`✅ All unread notifications marked as read for user ${userId}`);
+    } catch (error) {
+      console.error('❌ Failed to mark all notifications as read:', error);
+      throw error;
+    }
+  }
+
   // Get unread count
   async getUnreadCount(userId: string) {
     try {
@@ -112,14 +133,77 @@ class OfferNotificationService {
         .select()
         .from(notifications)
         .where(
-          eq(notifications.userId, userId) && 
-          eq(notifications.read, false)
+          and(
+            eq(notifications.userId, userId),
+            eq(notifications.read, false)
+          )
         );
 
       return unreadNotifications.length;
     } catch (error) {
       console.error('❌ Failed to get unread count:', error);
       return 0;
+    }
+  }
+
+  // Find and update existing unread notification for a conversation (for grouping chat messages)
+  async updateOrCreateChatNotification(
+    userId: string,
+    conversationId: string,
+    senderName: string,
+    productName: string,
+    messagePreview: string
+  ) {
+    try {
+      const conversationLink = `/messages?conversation=${conversationId}`;
+      
+      // Check if there's an existing unread notification for this conversation
+      const existingNotification = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, userId),
+            eq(notifications.read, false),
+            eq(notifications.title, 'New Message'),
+            eq(notifications.link, conversationLink)
+          )
+        )
+        .orderBy(desc(notifications.createdAt))
+        .limit(1);
+
+      if (existingNotification.length > 0) {
+        // Update existing notification with new message preview and timestamp
+        await db
+          .update(notifications)
+          .set({
+            body: `${senderName} sent you a message about "${productName}": ${messagePreview}`,
+            createdAt: new Date() // Update timestamp to show it's the latest
+          })
+          .where(eq(notifications.id, existingNotification[0].id));
+
+        console.log(`🔄 Updated existing chat notification for conversation ${conversationId}`);
+        return existingNotification[0].id;
+      } else {
+        // Create new notification if none exists
+        const notificationId = crypto.randomUUID();
+        await db.insert(notifications).values({
+          id: notificationId,
+          userId: userId,
+          title: 'New Message',
+          body: `${senderName} sent you a message about "${productName}": ${messagePreview}`,
+          type: 'in-app',
+          read: false,
+          link: conversationLink,
+          createdAt: new Date(),
+        });
+
+        console.log(`🔔 Created new chat notification for conversation ${conversationId}`);
+        return notificationId;
+      }
+    } catch (error) {
+      console.error('❌ Failed to update or create chat notification:', error);
+      throw error;
     }
   }
 }

@@ -167,7 +167,10 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       quantityUnit: editingProduct.quantityUnit,
       packaging: editingProduct.packaging,
       unit: editingProduct.unit,
+        availableStock: editingProduct.availableStock,
+        availableStockType: typeof editingProduct.availableStock,
         availableQuantity: editingProduct.availableQuantity,
+        availableQuantityType: typeof editingProduct.availableQuantity,
         minimumOrder: editingProduct.minimumOrder,
         additionalNotes: editingProduct.additionalNotes
       });
@@ -208,7 +211,21 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
         sellerName: editingProduct.sellerName || currentUser?.name || '',
         image: primaryImage,
         images: images,
-        availableQuantity: toFormValue(editingProduct.availableQuantity),
+        // Use availableStock (raw value) for editing, fallback to availableQuantity for backward compatibility
+        availableQuantity: (() => {
+          const stockValue = editingProduct.availableStock;
+          const quantityValue = editingProduct.availableQuantity;
+          const finalValue = stockValue !== null && stockValue !== undefined && stockValue !== '' 
+            ? stockValue 
+            : quantityValue;
+          console.log('📊 Available stock value selection:', {
+            availableStock: stockValue,
+            availableQuantity: quantityValue,
+            selected: finalValue,
+            finalFormValue: toFormValue(finalValue)
+          });
+          return toFormValue(finalValue);
+        })(),
         minimumOrder: toFormValue(editingProduct.minimumOrder),
         deliveryOptions: editingProduct.deliveryOptions || [],
         paymentTerms: editingProduct.paymentTerms || [],
@@ -289,8 +306,10 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       'Cold Chain Transport'
     ];
     
-    const result = [...baseOptions, ...availableCustomDeliveryOptions];
-    return result;
+    // Combine and deduplicate options to prevent duplicate keys
+    const allOptions = [...baseOptions, ...availableCustomDeliveryOptions];
+    const uniqueOptions = Array.from(new Set(allOptions));
+    return uniqueOptions;
   }, [availableCustomDeliveryOptions]);
 
   // Check if form data has been modified (for edit mode)
@@ -358,8 +377,10 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       '30% Advance, 70% on Delivery'
     ];
     
-    const result = [...baseOptions, ...availableCustomPaymentTerms];
-    return result;
+    // Combine and deduplicate terms to prevent duplicate keys
+    const allTerms = [...baseOptions, ...availableCustomPaymentTerms];
+    const uniqueTerms = Array.from(new Set(allTerms));
+    return uniqueTerms;
   }, [availableCustomPaymentTerms]);
 
   // Debug form data changes - removed to reduce console spam
@@ -466,10 +487,19 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
   const removeCustomDeliveryOption = useCallback(async (option: string, force = false) => {
     if (!currentUser?.id) return;
     
+    // Get current product ID if editing
+    const currentProductId = editingProduct?.id || null;
+    
     try {
       // First, we need to find the option ID from the database
       // Since we only have the name, we'll need to fetch the full options first
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('❌ No token found');
+        alert('Please log in to delete custom options');
+        return;
+      }
+      
       const fullOptions = await fetch('/api/seller/custom-delivery-options/full', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -478,11 +508,19 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       
       if (fullOptions.ok) {
         const fullData = await fullOptions.json();
+        console.log('📦 Full delivery options data:', fullData);
+        
+        if (!fullData.options || !Array.isArray(fullData.options)) {
+          console.error('❌ Invalid response format:', fullData);
+          alert('Failed to fetch delivery options. Please try again.');
+          return;
+        }
+        
         const optionToDelete = fullData.options.find((opt: any) => opt.name === option);
         
         if (optionToDelete) {
-          // Call DELETE API with the option ID
-          const deleteUrl = `/api/seller/custom-delivery-options?id=${optionToDelete.id}${force ? '&force=true' : ''}`;
+          // Call DELETE API with the option ID and current product ID (if editing)
+          const deleteUrl = `/api/seller/custom-delivery-options?id=${optionToDelete.id}${force ? '&force=true' : ''}${currentProductId ? `&currentProductId=${currentProductId}` : ''}`;
           const deleteResponse = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
@@ -503,6 +541,7 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
             }));
             
             console.log('✅ Custom delivery option deleted successfully');
+            alert('Delivery option deleted successfully');
           } else if (deleteResponse.status === 409 && deleteData.error === 'OPTION_IN_USE') {
             // Show warning dialog for option in use
             const shouldForceDelete = window.confirm(
@@ -517,19 +556,34 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
               await removeCustomDeliveryOption(option, true);
             }
           } else {
-            console.error('❌ Failed to delete custom delivery option:', deleteData.message);
-            alert(`Failed to delete delivery option: ${deleteData.message}`);
+            console.error('❌ Failed to delete custom delivery option:', deleteData);
+            alert(`Failed to delete delivery option: ${deleteData.message || 'Unknown error'}`);
           }
         } else {
-          console.error('❌ Option not found for deletion');
+          console.error('❌ Option not found for deletion:', option);
+          console.error('📦 Available options:', fullData.options.map((opt: any) => opt.name));
+          alert(`Option "${option}" not found in your custom delivery options`);
         }
       } else {
-        console.error('❌ Failed to fetch options for deletion');
+        const errorText = await fullOptions.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || 'Unknown error' };
+        }
+        console.error('❌ Failed to fetch options for deletion:', {
+          status: fullOptions.status,
+          statusText: fullOptions.statusText,
+          error: errorData
+        });
+        alert(`Failed to fetch delivery options: ${errorData.message || 'Please try again'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing custom delivery option:', error);
+      alert(`Error: ${error.message || 'Failed to delete delivery option. Please try again.'}`);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, editingProduct?.id]);
 
   // Add custom payment option
   const addCustomPaymentOption = useCallback(async () => {
@@ -563,10 +617,19 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
   const removeCustomPaymentOption = useCallback(async (term: string, force = false) => {
     if (!currentUser?.id) return;
     
+    // Get current product ID if editing
+    const currentProductId = editingProduct?.id || null;
+    
     try {
       // First, we need to find the option ID from the database
       // Since we only have the name, we'll need to fetch the full options first
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('❌ No token found');
+        alert('Please log in to delete custom options');
+        return;
+      }
+      
       const fullOptions = await fetch('/api/seller/custom-payment-terms/full', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -575,11 +638,19 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       
       if (fullOptions.ok) {
         const fullData = await fullOptions.json();
+        console.log('💳 Full payment terms data:', fullData);
+        
+        if (!fullData.options || !Array.isArray(fullData.options)) {
+          console.error('❌ Invalid response format:', fullData);
+          alert('Failed to fetch payment terms. Please try again.');
+          return;
+        }
+        
         const optionToDelete = fullData.options.find((opt: any) => opt.name === term);
         
         if (optionToDelete) {
-          // Call DELETE API with the option ID
-          const deleteUrl = `/api/seller/custom-payment-terms?id=${optionToDelete.id}${force ? '&force=true' : ''}`;
+          // Call DELETE API with the option ID and current product ID (if editing)
+          const deleteUrl = `/api/seller/custom-payment-terms?id=${optionToDelete.id}${force ? '&force=true' : ''}${currentProductId ? `&currentProductId=${currentProductId}` : ''}`;
           const deleteResponse = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
@@ -600,6 +671,7 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
             }));
             
             console.log('✅ Custom payment term deleted successfully');
+            alert('Payment term deleted successfully');
           } else if (deleteResponse.status === 409 && deleteData.error === 'TERM_IN_USE') {
             // Show warning dialog for term in use
             const shouldForceDelete = window.confirm(
@@ -614,19 +686,34 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
               await removeCustomPaymentOption(term, true);
             }
           } else {
-            console.error('❌ Failed to delete custom payment term:', deleteData.message);
-            alert(`Failed to delete payment term: ${deleteData.message}`);
+            console.error('❌ Failed to delete custom payment term:', deleteData);
+            alert(`Failed to delete payment term: ${deleteData.message || 'Unknown error'}`);
           }
         } else {
-          console.error('❌ Option not found for deletion');
+          console.error('❌ Option not found for deletion:', term);
+          console.error('💳 Available options:', fullData.options.map((opt: any) => opt.name));
+          alert(`Payment term "${term}" not found in your custom payment terms`);
         }
       } else {
-        console.error('❌ Failed to fetch options for deletion');
+        const errorText = await fullOptions.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || 'Unknown error' };
+        }
+        console.error('❌ Failed to fetch options for deletion:', {
+          status: fullOptions.status,
+          statusText: fullOptions.statusText,
+          error: errorData
+        });
+        alert(`Failed to fetch payment terms: ${errorData.message || 'Please try again'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing custom payment option:', error);
+      alert(`Error: ${error.message || 'Failed to delete payment term. Please try again.'}`);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, editingProduct?.id]);
 
   // Handle multiple image upload
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -890,7 +977,7 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
                     <Select 
-                      value={formData.category} 
+                      value={formData.category || ''} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                       disabled={categoriesLoading}
                     >
@@ -1216,8 +1303,8 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availableDeliveryOptions.map(option => (
-                <div key={option} className="flex items-center space-x-2">
+              {availableDeliveryOptions.map((option, index) => (
+                <div key={`delivery-${index}-${option}`} className="flex items-center space-x-2">
                   <Checkbox
                     id={`delivery-${option}`}
                     checked={(formData.deliveryOptions || []).includes(option)}
@@ -1280,8 +1367,8 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availablePaymentTerms.map(term => (
-                <div key={term} className="flex items-center space-x-2">
+              {availablePaymentTerms.map((term, index) => (
+                <div key={`payment-${index}-${term}`} className="flex items-center space-x-2">
                   <Checkbox
                     id={`payment-${term}`}
                     checked={(formData.paymentTerms || []).includes(term)}
