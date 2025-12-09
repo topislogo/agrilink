@@ -167,7 +167,10 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       quantityUnit: editingProduct.quantityUnit,
       packaging: editingProduct.packaging,
       unit: editingProduct.unit,
+        availableStock: editingProduct.availableStock,
+        availableStockType: typeof editingProduct.availableStock,
         availableQuantity: editingProduct.availableQuantity,
+        availableQuantityType: typeof editingProduct.availableQuantity,
         minimumOrder: editingProduct.minimumOrder,
         additionalNotes: editingProduct.additionalNotes
       });
@@ -208,7 +211,21 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
         sellerName: editingProduct.sellerName || currentUser?.name || '',
         image: primaryImage,
         images: images,
-        availableQuantity: toFormValue(editingProduct.availableQuantity),
+        // Use availableStock (raw value) for editing, fallback to availableQuantity for backward compatibility
+        availableQuantity: (() => {
+          const stockValue = editingProduct.availableStock;
+          const quantityValue = editingProduct.availableQuantity;
+          const finalValue = stockValue !== null && stockValue !== undefined && stockValue !== '' 
+            ? stockValue 
+            : quantityValue;
+          console.log('📊 Available stock value selection:', {
+            availableStock: stockValue,
+            availableQuantity: quantityValue,
+            selected: finalValue,
+            finalFormValue: toFormValue(finalValue)
+          });
+          return toFormValue(finalValue);
+        })(),
         minimumOrder: toFormValue(editingProduct.minimumOrder),
         deliveryOptions: editingProduct.deliveryOptions || [],
         paymentTerms: editingProduct.paymentTerms || [],

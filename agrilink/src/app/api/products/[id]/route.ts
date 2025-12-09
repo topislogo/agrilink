@@ -37,6 +37,7 @@ export async function GET(
         description: productsTable.description,
         isActive: productsTable.isActive,
         createdAt: productsTable.createdAt,
+        updatedAt: productsTable.updatedAt,
         price: productsTable.price,
         quantity: productsTable.quantity,
         quantityUnit: productsTable.quantityUnit,
@@ -190,8 +191,10 @@ export async function GET(
       location: product.sellerLocation, // Use seller location
       region: product.sellerRegion, // Use seller region
       city: product.sellerCity, // Use seller city
-      lastUpdated: product.createdAt,
-      availableQuantity: actualAvailableQuantity ? actualAvailableQuantity.toString() : '0', // Use calculated available quantity as string
+      lastUpdated: product.updatedAt || product.createdAt, // Use updatedAt, fallback to createdAt
+      updatedAt: product.updatedAt || product.createdAt, // Also include updatedAt field for components
+      availableStock: product.availableStock || null, // Raw stock value (for editing)
+      availableQuantity: actualAvailableQuantity ? actualAvailableQuantity.toString() : '0', // Calculated available quantity (for display)
       minimumOrder: product.minimumOrder, // No fallback - show actual value (null if not set)
       deliveryOptions: deliveryOptionNames,
       paymentTerms: paymentTermNames,
@@ -299,6 +302,8 @@ export async function PUT(
         location: body.location,
         region: body.region,
         availableQuantity: body.availableQuantity,
+        availableQuantityType: typeof body.availableQuantity,
+        availableQuantityValue: body.availableQuantity,
         minimumOrder: body.minimumOrder,
         deliveryOptions: body.deliveryOptions,
         paymentTerms: body.paymentTerms,
@@ -479,43 +484,100 @@ export async function PUT(
     // Update main product table
     let updatedProduct;
     try {
-      updatedProduct = await sql`
-        UPDATE products 
-        SET 
-          name = ${body.name || ''},
-          description = ${body.description || ''},
-          price = ${body.price || 0},
-          quantity = ${toDbValue(body.quantity)},
-          "quantityUnit" = ${toDbValue(body.quantityUnit)},
-          packaging = ${toDbValue(body.packaging)},
-          "availableStock" = ${toDbValue(body.availableQuantity)},
-          "minimumOrder" = ${toDbValue(body.minimumOrder)},
-          "deliveryOptions" = ${deliveryOptionUuids},
-          "paymentTerms" = ${paymentTermUuids},
-          "additionalNotes" = ${toDbValue(body.additionalNotes)},
-          "updatedAt" = NOW()
-        WHERE id = ${productId}
-        RETURNING *
-      `;
+      // For availableStock, keep as string (text field in DB) - don't convert to number
+      const availableStockValue = body.availableQuantity === '' || body.availableQuantity === null || body.availableQuantity === undefined
+        ? null
+        : String(body.availableQuantity);
+      console.log('📊 Available stock value conversion:', {
+        input: body.availableQuantity,
+        inputType: typeof body.availableQuantity,
+        converted: availableStockValue,
+        convertedType: typeof availableStockValue
+      });
       
-      if (updatedProduct.length === 0) {
-        console.log('❌ Product update failed - no rows affected');
-        return NextResponse.json(
-          { message: "Product update failed" },
-          { status: 500 }
-        );
+      // Handle empty arrays - use empty array instead of null for PostgreSQL UUID arrays
+      // PostgreSQL UUID array columns work better with empty arrays than null
+      const deliveryOptionsValue = deliveryOptionUuids.length > 0 ? deliveryOptionUuids : [];
+      const paymentTermsValue = paymentTermUuids.length > 0 ? paymentTermUuids : [];
+      
+      console.log('📊 Values for SQL update:', {
+        deliveryOptionsValue,
+        deliveryOptionsLength: deliveryOptionsValue.length,
+        paymentTermsValue,
+        paymentTermsLength: paymentTermsValue.length,
+        availableStockValue,
+        availableStockType: typeof availableStockValue
+      });
+      
+      // Use drizzle ORM update instead of raw SQL for better type handling
+      try {
+        const updateData: any = {
+          name: body.name || '',
+          description: body.description || '',
+          price: body.price || 0,
+          quantity: toDbValue(body.quantity),
+          quantityUnit: toDbValue(body.quantityUnit),
+          packaging: toDbValue(body.packaging),
+          availableStock: availableStockValue,
+          minimumOrder: toDbValue(body.minimumOrder),
+          deliveryOptions: deliveryOptionsValue.length > 0 ? deliveryOptionsValue : null,
+          paymentTerms: paymentTermsValue.length > 0 ? paymentTermsValue : null,
+          additionalNotes: toDbValue(body.additionalNotes),
+          updatedAt: new Date()
+        };
+        
+        console.log('📊 Update data prepared:', {
+          ...updateData,
+          deliveryOptionsLength: updateData.deliveryOptions?.length || 0,
+          paymentTermsLength: updateData.paymentTerms?.length || 0
+        });
+        
+        const updateResult = await db
+          .update(productsTable)
+          .set(updateData)
+          .where(eq(productsTable.id, productId))
+          .returning();
+        
+        if (!updateResult || updateResult.length === 0) {
+          console.log('❌ Product update failed - no rows affected');
+          return NextResponse.json(
+            { message: "Product update failed - no rows affected" },
+            { status: 500 }
+          );
+        }
+        
+        updatedProduct = updateResult;
+        console.log('✅ Main product table updated successfully');
+        console.log('📊 Updated product availableStock:', {
+          availableStock: updatedProduct[0]?.availableStock,
+          availableStockType: typeof updatedProduct[0]?.availableStock,
+          productId: updatedProduct[0]?.id
+        });
+      } catch (dbError: any) {
+        console.error('❌ Database update error:', dbError);
+        throw dbError; // Re-throw to be caught by outer catch
       }
-      
-      console.log('✅ Main product table updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error updating main product table:', error);
+      console.error('❌ Error details:', {
+        message: error?.message,
+        code: error?.code,
+        detail: error?.detail,
+        hint: error?.hint,
+        stack: error?.stack
+      });
       return NextResponse.json(
-        { message: "Failed to update product" },
+        { 
+          message: "Failed to update product",
+          error: error?.message || 'Unknown error',
+          code: error?.code,
+          detail: error?.detail
+        },
         { status: 500 }
       );
     }
 
-    console.log('✅ Updated product:', updatedProduct[0]);
+    console.log('✅ Updated product:', updatedProduct[0] || 'No product returned');
 
     // Update pricing if provided (UPSERT - Insert or Update)
     if (body.price !== undefined && body.price !== null) {
@@ -752,22 +814,33 @@ export async function PUT(
     }
 
     // Update product delivery information if provided - save directly to products table
+    // Note: This is a duplicate update - the main SQL update above already handles these fields
+    // Keeping this for backward compatibility but it should not be necessary
     if (body.deliveryOptions || body.paymentTerms || body.additionalNotes !== undefined) {
-      console.log('🔄 Updating product delivery options and payment terms in products table');
+      console.log('🔄 Updating product delivery options and payment terms in products table (duplicate update)');
       
-      // Update the products table directly with the UUIDs
-      const updateResult = await db
-        .update(productsTable)
-        .set({
-          deliveryOptions: deliveryOptionUuids,
-          paymentTerms: paymentTermUuids,
-          additionalNotes: toDbValue(body.additionalNotes),
-          updatedAt: new Date()
-        })
-        .where(eq(productsTable.id, productId))
-        .returning();
+      // Handle empty arrays - convert to null for database
+      const deliveryOptionsForUpdate = deliveryOptionUuids.length > 0 ? deliveryOptionUuids : null;
+      const paymentTermsForUpdate = paymentTermUuids.length > 0 ? paymentTermUuids : null;
       
-      console.log('✅ Updated product delivery options and payment terms:', updateResult[0]);
+      try {
+        // Update the products table directly with the UUIDs
+        const updateResult = await db
+          .update(productsTable)
+          .set({
+            deliveryOptions: deliveryOptionsForUpdate,
+            paymentTerms: paymentTermsForUpdate,
+            additionalNotes: toDbValue(body.additionalNotes),
+            updatedAt: new Date()
+          })
+          .where(eq(productsTable.id, productId))
+          .returning();
+        
+        console.log('✅ Updated product delivery options and payment terms:', updateResult[0]);
+      } catch (error: any) {
+        console.error('❌ Error in duplicate update (non-critical):', error);
+        // Don't fail the entire request - the main update already handled this
+      }
     }
 
     console.log('✅ Product update completed successfully');
@@ -780,6 +853,14 @@ export async function PUT(
       ORDER BY "createdAt" ASC
     `;
 
+    if (!updatedProduct || updatedProduct.length === 0) {
+      console.error('❌ No product returned from update');
+      return NextResponse.json(
+        { message: "Product update completed but no product data returned" },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json({
       message: "Product updated successfully",
       product: updatedProduct[0],
@@ -794,19 +875,26 @@ export async function PUT(
   } catch (error: any) {
     console.error("❌ Error updating product:", error);
     console.error("❌ Error details:", {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      detail: error.detail,
-      hint: error.hint
+      message: error?.message,
+      stack: error?.stack,
+      code: error?.code,
+      detail: error?.detail,
+      hint: error?.hint,
+      name: error?.name,
+      toString: String(error)
     });
+    
+    // Ensure we always return a valid error message
+    const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+    const errorCode = error?.code || 'UNKNOWN_ERROR';
+    
     return NextResponse.json(
       { 
-        message: "Internal server error", 
-        error: error.message,
-        code: error.code,
-        detail: error.detail,
-        hint: error.hint
+        message: "Internal server error",
+        error: errorMessage,
+        code: errorCode,
+        detail: error?.detail || null,
+        hint: error?.hint || null
       },
       { status: 500 }
     );
