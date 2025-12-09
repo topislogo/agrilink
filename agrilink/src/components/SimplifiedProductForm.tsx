@@ -306,8 +306,10 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       'Cold Chain Transport'
     ];
     
-    const result = [...baseOptions, ...availableCustomDeliveryOptions];
-    return result;
+    // Combine and deduplicate options to prevent duplicate keys
+    const allOptions = [...baseOptions, ...availableCustomDeliveryOptions];
+    const uniqueOptions = Array.from(new Set(allOptions));
+    return uniqueOptions;
   }, [availableCustomDeliveryOptions]);
 
   // Check if form data has been modified (for edit mode)
@@ -375,8 +377,10 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
       '30% Advance, 70% on Delivery'
     ];
     
-    const result = [...baseOptions, ...availableCustomPaymentTerms];
-    return result;
+    // Combine and deduplicate terms to prevent duplicate keys
+    const allTerms = [...baseOptions, ...availableCustomPaymentTerms];
+    const uniqueTerms = Array.from(new Set(allTerms));
+    return uniqueTerms;
   }, [availableCustomPaymentTerms]);
 
   // Debug form data changes - removed to reduce console spam
@@ -907,7 +911,7 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
                     <Select 
-                      value={formData.category} 
+                      value={formData.category || ''} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                       disabled={categoriesLoading}
                     >
@@ -1233,8 +1237,8 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availableDeliveryOptions.map(option => (
-                <div key={option} className="flex items-center space-x-2">
+              {availableDeliveryOptions.map((option, index) => (
+                <div key={`delivery-${index}-${option}`} className="flex items-center space-x-2">
                   <Checkbox
                     id={`delivery-${option}`}
                     checked={(formData.deliveryOptions || []).includes(option)}
@@ -1297,8 +1301,8 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availablePaymentTerms.map(term => (
-                <div key={term} className="flex items-center space-x-2">
+              {availablePaymentTerms.map((term, index) => (
+                <div key={`payment-${index}-${term}`} className="flex items-center space-x-2">
                   <Checkbox
                     id={`payment-${term}`}
                     checked={(formData.paymentTerms || []).includes(term)}
