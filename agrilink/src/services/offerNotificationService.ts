@@ -1,7 +1,7 @@
 // Offer Status Notification Service
 import { db } from '@/lib/db';
 import { notifications } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 
 export interface OfferNotification {
   id: string;
@@ -102,6 +102,26 @@ class OfferNotificationService {
       console.log(`✅ Notification ${notificationId} marked as read`);
     } catch (error) {
       console.error('❌ Failed to mark notification as read:', error);
+    }
+  }
+
+  // Mark all unread notifications as read for a user
+  async markAllAsRead(userId: string) {
+    try {
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, userId),
+            eq(notifications.read, false)
+          )
+        );
+      
+      console.log(`✅ All unread notifications marked as read for user ${userId}`);
+    } catch (error) {
+      console.error('❌ Failed to mark all notifications as read:', error);
+      throw error;
     }
   }
 

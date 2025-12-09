@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, X, CheckCircle, XCircle, Clock, FileText, Truck } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -26,6 +26,7 @@ export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const hasAutoMarkedRef = useRef(false);
 
   useEffect(() => {
     if (userId) {
@@ -67,6 +68,36 @@ export function OfferNotificationCenter({ userId }: OfferNotificationCenterProps
       console.error('Error marking notification as read:', error);
     }
   };
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/notifications/read-all?userId=${userId}`, {
+        method: 'PATCH',
+      });
+      if (response.ok) {
+        setNotifications(prev =>
+          prev.map(n => ({ ...n, read: true }))
+        );
+        setUnreadCount(0);
+      } else {
+        console.error('Failed to mark all notifications as read');
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  }, [userId]);
+
+  // Auto-mark all as read when notification center is opened (only once per open)
+  useEffect(() => {
+    if (isOpen && unreadCount > 0 && !hasAutoMarkedRef.current) {
+      hasAutoMarkedRef.current = true;
+      markAllAsRead();
+    }
+    // Reset the flag when the popover closes
+    if (!isOpen) {
+      hasAutoMarkedRef.current = false;
+    }
+  }, [isOpen, unreadCount, markAllAsRead]);
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
