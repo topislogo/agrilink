@@ -96,10 +96,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if term already exists for this seller
+    // Check if term already exists for this seller (only active ones)
     const existingTerm = await sql`
       SELECT id FROM seller_custom_payment_terms
-      WHERE "sellerId" = ${sellerId} AND name = ${name.trim()}
+      WHERE "sellerId" = ${sellerId} AND name = ${name.trim()} AND "isActive" = true
       LIMIT 1
     `;
 
@@ -140,6 +140,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const termId = searchParams.get('id');
     const force = searchParams.get('force') === 'true'; // Allow force deletion
+    const currentProductId = searchParams.get('currentProductId'); // Current product being edited (if any)
 
     if (!termId) {
       return NextResponse.json(
@@ -162,26 +163,74 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if this term is being used by any products
-    if (!force) {
-      const usageCheck = await sql`
+    // Check if this term is being used by other products (excluding current product if editing)
+    // Note: payment_terms in products table is a UUID array, so we check for the term ID (UUID), not the name
+    let usageCheck;
+    if (currentProductId) {
+      // Check usage in other products (excluding current product)
+      usageCheck = await sql`
         SELECT COUNT(*) as usage_count
         FROM products 
-        WHERE payment_terms @> ${JSON.stringify([term[0].name])}
+        WHERE "paymentTerms" @> ARRAY[${termId}]::uuid[]
+        AND "sellerId" = ${sellerId}
+        AND id != ${currentProductId}
+      `;
+    } else {
+      // Check usage in all products
+      usageCheck = await sql`
+        SELECT COUNT(*) as usage_count
+        FROM products 
+        WHERE "paymentTerms" @> ARRAY[${termId}]::uuid[]
         AND "sellerId" = ${sellerId}
       `;
+    }
 
-      const usageCount = parseInt(usageCheck[0].usage_count);
+    const usageCount = parseInt(usageCheck[0]?.usage_count || '0');
+    
+    // Only show warning if used in OTHER products (not the current one being edited)
+    if (!force && usageCount > 0) {
+      return NextResponse.json({
+        message: 'Cannot delete term that is in use',
+        error: 'TERM_IN_USE',
+        usageCount: usageCount,
+        termName: term[0].name,
+        details: `This payment term is currently used by ${usageCount} other product(s). Please update those products first or use force deletion.`
+      }, { status: 409 });
+    }
+
+    // If force deleting, remove the term from all products that use it (including current product)
+    if (force) {
+      // Get total usage count (including current product)
+      const totalUsageCheck = await sql`
+        SELECT COUNT(*) as usage_count
+        FROM products 
+        WHERE "paymentTerms" @> ARRAY[${termId}]::uuid[]
+        AND "sellerId" = ${sellerId}
+      `;
+      const totalUsageCount = parseInt(totalUsageCheck[0]?.usage_count || '0');
       
-      if (usageCount > 0) {
-        return NextResponse.json({
-          message: 'Cannot delete term that is in use',
-          error: 'TERM_IN_USE',
-          usageCount: usageCount,
-          termName: term[0].name,
-          details: `This payment term is currently used by ${usageCount} product(s). Please update those products first or use force deletion.`
-        }, { status: 409 });
+      if (totalUsageCount > 0) {
+        console.log(`🔄 Force deleting: Removing payment term ${termId} from ${totalUsageCount} product(s)`);
+        await sql`
+          UPDATE products
+          SET "paymentTerms" = array_remove("paymentTerms", ${termId}::uuid),
+              "updatedAt" = NOW()
+          WHERE "paymentTerms" @> ARRAY[${termId}]::uuid[]
+          AND "sellerId" = ${sellerId}
+        `;
+        console.log(`✅ Removed payment term from ${totalUsageCount} product(s)`);
       }
+    } else if (currentProductId) {
+      // If not force deleting but we have a current product, remove it from current product only
+      // (since it's only used there, we can safely remove it)
+      await sql`
+        UPDATE products
+        SET "paymentTerms" = array_remove("paymentTerms", ${termId}::uuid),
+            "updatedAt" = NOW()
+        WHERE id = ${currentProductId}
+        AND "sellerId" = ${sellerId}
+      `;
+      console.log(`✅ Removed payment term from current product`);
     }
 
     // Soft delete by setting isActive to false
@@ -192,15 +241,34 @@ export async function DELETE(request: NextRequest) {
       RETURNING id
     `;
 
+    if (deletedTerm.length === 0) {
+      return NextResponse.json(
+        { message: 'Term not found or access denied' },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       message: 'Custom payment term deleted successfully',
       forceDeleted: force
     });
 
   } catch (error: any) {
-    console.error('Error deleting custom payment term:', error);
+    console.error('❌ Error deleting custom payment term:', error);
+    console.error('❌ Error details:', {
+      message: error?.message,
+      code: error?.code,
+      detail: error?.detail,
+      hint: error?.hint,
+      stack: error?.stack
+    });
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { 
+        message: 'Internal server error',
+        error: error?.message || 'Unknown error',
+        code: error?.code,
+        detail: error?.detail
+      },
       { status: 500 }
     );
   }

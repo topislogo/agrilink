@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sellerCustomDeliveryOptions, users } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 
 // Helper function to verify JWT token
@@ -67,7 +67,6 @@ export async function GET(request: NextRequest) {
       .select({
         id: sellerCustomDeliveryOptions.id,
         name: sellerCustomDeliveryOptions.name,
-        description: sellerCustomDeliveryOptions.description,
         isActive: sellerCustomDeliveryOptions.isActive,
         createdAt: sellerCustomDeliveryOptions.createdAt,
         updatedAt: sellerCustomDeliveryOptions.updatedAt,
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
         eq(sellerCustomDeliveryOptions.sellerId, sellerId),
         eq(sellerCustomDeliveryOptions.isActive, true)
       ))
-      .orderBy(sellerCustomDeliveryOptions.createdAt);
+      .orderBy(asc(sellerCustomDeliveryOptions.createdAt));
 
     console.log('📦 Custom delivery options full API - Found options:', customOptions.length);
 
