@@ -434,17 +434,20 @@ export async function POST(request: NextRequest) {
         .from(deliveryOptionsTable)
         .where(inArray(deliveryOptionsTable.name, deliveryArray));
       
-      // Look up custom delivery options for this seller
-      const customDeliveryResults = await sql`
-        SELECT id, name FROM seller_custom_delivery_options
-        WHERE "sellerId" = ${userId} AND name = ANY(${deliveryArray})
-      `;
+      // Look up custom delivery options for this seller (using same approach as edit endpoint)
+      const customDeliveryResults = await db
+        .select({ id: sellerCustomDeliveryOptions.id, name: sellerCustomDeliveryOptions.name })
+        .from(sellerCustomDeliveryOptions)
+        .where(and(
+          eq(sellerCustomDeliveryOptions.sellerId, userId),
+          inArray(sellerCustomDeliveryOptions.name, deliveryArray)
+        ));
       
       console.log('🔍 Standard delivery options found:', standardDeliveryResults);
       console.log('🔍 Custom delivery options found:', customDeliveryResults);
       
-      // Combine both results - ensure customDeliveryResults is an array
-      const allDeliveryResults = [...standardDeliveryResults, ...(Array.isArray(customDeliveryResults) ? customDeliveryResults : [])];
+      // Combine both results
+      const allDeliveryResults = [...standardDeliveryResults, ...customDeliveryResults];
       
       if (allDeliveryResults.length > 0) {
         deliveryOptionIds = allDeliveryResults.map(r => r.id);
@@ -464,17 +467,20 @@ export async function POST(request: NextRequest) {
         .from(paymentTermsTable)
         .where(inArray(paymentTermsTable.name, paymentArray));
       
-      // Look up custom payment terms for this seller
-      const customPaymentResults = await sql`
-        SELECT id, name FROM seller_custom_payment_terms
-        WHERE "sellerId" = ${userId} AND name = ANY(${paymentArray})
-      `;
+      // Look up custom payment terms for this seller (using same approach as edit endpoint)
+      const customPaymentResults = await db
+        .select({ id: sellerCustomPaymentTerms.id, name: sellerCustomPaymentTerms.name })
+        .from(sellerCustomPaymentTerms)
+        .where(and(
+          eq(sellerCustomPaymentTerms.sellerId, userId),
+          inArray(sellerCustomPaymentTerms.name, paymentArray)
+        ));
       
       console.log('🔍 Standard payment terms found:', standardPaymentResults);
       console.log('🔍 Custom payment terms found:', customPaymentResults);
       
-      // Combine both results - ensure customPaymentResults is an array
-      const allPaymentResults = [...standardPaymentResults, ...(Array.isArray(customPaymentResults) ? customPaymentResults : [])];
+      // Combine both results
+      const allPaymentResults = [...standardPaymentResults, ...customPaymentResults];
       
       if (allPaymentResults.length > 0) {
         paymentTermIds = allPaymentResults.map(r => r.id);
