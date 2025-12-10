@@ -628,8 +628,14 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Please upload an image file (JPG, PNG, etc.)');
+    // if (!file.type.startsWith('image/')) {
+    //   setUploadError('Please upload an image file (JPG, PNG, etc.)');
+    //   setTimeout(() => setUploadError(null), 5000);
+    //   return;
+    // }
+    const allowedTypes = ['image/', 'application/pdf'];
+    if (!allowedTypes.some(type => file.type.startsWith(type))) {
+      setUploadError('Please upload an image or PDF file');
       setTimeout(() => setUploadError(null), 5000);
       return;
     }
@@ -1432,11 +1438,11 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
                           <FileText className="w-12 h-12 text-primary/70 mx-auto mb-4" />
                           <p className="text-sm font-medium mb-2 text-primary">Upload Identity Document</p>
                           <p className="text-xs text-primary/70 mb-4">
-                            National ID, Passport, or Driver's License • JPG, PNG up to 10MB
+                            National ID, Passport, or Driver's License • JPG, PNG, PDF up to 10MB
                           </p>
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/*,application/pdf"
                             className="hidden"
                             id="id-upload"
                             onChange={(e) => handleFileUpload(e, 'idCard')}
@@ -1745,11 +1751,11 @@ export function AccountTypeVerification({ currentUser, onBack, onVerificationCom
                     <Building className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-sm font-medium mb-2">Upload Business Registration</p>
                     <p className="text-xs text-muted-foreground mb-4">
-                      Business License or Registration • JPG, PNG up to 10MB
+                      Business License or Registration • JPG, PNG, PDF up to 10MB
                     </p>
                     <input
-                      type="file"
-                      accept="image/*"
+                      type="file"  
+                      accept="image/*,application/pdf"
                       className="hidden"
                       id="business-detail-upload"
                       onChange={(e) => handleFileUpload(e, 'businessLicense')}
