@@ -96,6 +96,13 @@ class TwilioService {
         try {
           const message = `Your AgriLink verification code is: ${code}. This code expires in 10 minutes.`;
           
+          // Always log OTP code to console for demo purposes (even in production mode)
+          console.log(`\n📱 ===== SMS VERIFICATION CODE (FOR DEMO) =====`);
+          console.log(`📱 Phone: ${phoneNumber}`);
+          console.log(`📱 Code: ${code}`);
+          console.log(`📱 Expires: 10 minutes`);
+          console.log(`📱 ===========================================\n`);
+          
           const result = await this.twilioClient.messages.create({
             body: message,
             from: this.fromNumber,

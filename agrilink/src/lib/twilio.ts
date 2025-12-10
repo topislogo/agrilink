@@ -38,9 +38,12 @@ export class TwilioService {
       // Generate a 6-digit verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Store the verification code (in production, use Redis or database)
-      // For now, we'll log it for demo purposes
-      console.log(`📱 Verification code for ${phoneNumber}: ${verificationCode}`);
+      // Always log OTP code to console for demo purposes
+      console.log(`\n📱 ===== SMS VERIFICATION CODE (FOR DEMO) =====`);
+      console.log(`📱 Phone: ${phoneNumber}`);
+      console.log(`📱 Code: ${verificationCode}`);
+      console.log(`📱 Expires: 10 minutes`);
+      console.log(`📱 ===========================================\n`);
 
       // Determine sender number - use provided sender or default
       const fromNumber = senderNumber || process.env.TWILIO_PHONE_NUMBER;

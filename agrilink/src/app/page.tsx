@@ -142,42 +142,54 @@ export default function HomePage() {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    // Fetch seller details
+    // Open chat immediately with available product data
+    setSelectedProduct(product);
+    setIsChatOpen(true);
+    
+    // Set initial seller data from product (may not have profileImage)
+    setSelectedSeller({
+      id: sellerId,
+      name: product.seller.name,
+      userType: product.seller.userType,
+      location: product.seller.location,
+      verified: product.seller.verified,
+      accountType: product.seller.accountType,
+      ratings: { rating: 0 },
+      profileImage: null // Will be updated below
+    });
+    
+    // Fetch full seller profile in background to get profileImage and other details
+    // Use the same approach as notification handler
     try {
-      const response = await fetch(`/api/seller/${sellerId}`);
-      if (response.ok) {
-        const sellerData = await response.json();
-        setSelectedSeller(sellerData);
-        setSelectedProduct(product);
-        setIsChatOpen(true);
-      } else {
-        // Fallback to basic seller data from product
+      // Determine which API endpoint to use based on user type
+      const isSeller = product.seller.userType === 'farmer' || product.seller.userType === 'trader';
+      const profileRoute = isSeller 
+        ? `/api/user/${sellerId}/public`  // Use public user endpoint which includes profileImage
+        : `/api/user/${sellerId}/public`;
+      
+      const profileResponse = await fetch(profileRoute);
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const fullSellerData = profileData.stats || profileData.user || profileData;
+        
+        // Update seller data with full profile including profileImage
         setSelectedSeller({
           id: sellerId,
-          name: product.seller.name,
-          userType: product.seller.userType,
-          location: product.seller.location,
-          verified: product.seller.verified,
-          accountType: product.seller.accountType,
-          ratings: { rating: 0 }
+          name: fullSellerData.name || product.seller.name,
+          userType: fullSellerData.userType || product.seller.userType,
+          location: fullSellerData.location || product.seller.location,
+          verified: fullSellerData.verified ?? product.seller.verified,
+          accountType: fullSellerData.accountType || product.seller.accountType,
+          ratings: fullSellerData.ratings || { rating: 0 },
+          profileImage: fullSellerData.profileImage || null
         });
-        setSelectedProduct(product);
-        setIsChatOpen(true);
+        console.log('✅ Fetched full seller profile with profileImage:', fullSellerData.profileImage ? 'Yes' : 'No');
+      } else {
+        console.warn('⚠️ Failed to fetch full seller profile, using product data');
       }
     } catch (error) {
-      console.error('Error fetching seller data:', error);
-      // Fallback to basic seller data from product
-      setSelectedSeller({
-        id: sellerId,
-        name: product.seller.name,
-        userType: product.seller.userType,
-        location: product.seller.location,
-        verified: product.seller.verified,
-        accountType: product.seller.accountType,
-        ratings: { rating: 0 }
-      });
-      setSelectedProduct(product);
-      setIsChatOpen(true);
+      console.error('Error fetching seller profile:', error);
+      // Keep the initial seller data from product
     }
   };
 
