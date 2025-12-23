@@ -7,12 +7,14 @@ import { AppHeader } from "@/components/AppHeader";
 import { UserProfile } from "@/components/UserProfile";
 import { SellerStorefront } from "@/components/SellerStorefront";
 import { ChatInterface } from "@/components/ChatInterface";
+import { toast, Toaster } from "sonner";
 
 interface UserProfileData {
   id: string;
   name: string;
-  userType: string;
-  accountType: string;
+  email: string;
+  userType: "farmer" | "trader" | "buyer";
+  accountType: "individual" | "business";
   joinedDate: string;
   location: string;
   profileImage?: string;
@@ -22,6 +24,8 @@ interface UserProfileData {
   businessDescription?: string;
   businessHours?: string;
   specialties?: string[];
+  storefrontImage?: string;
+  aboutme?: string;
   policies?: {
     returns?: string;
     delivery?: string;
@@ -93,7 +97,7 @@ export default function UserProfilePage() {
             };
             setUserProfile(mergedData);
           }
-        }
+        }        
       } else {
         console.error("Failed to load user profile");
         router.push("/");
@@ -118,31 +122,78 @@ export default function UserProfilePage() {
   };
 
   // Handle profile updates
-  const handleUpdateProfile = async (updates: any) => {
+  const handleUpdateProfile = async (updates: any, fieldEdit: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updates)
-      });
+      if (fieldEdit === 'socialmedia') {
+        const response = await fetch(`/api/user/${userId}/social`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updates)
+        });
 
-      if (response.ok) {
-        const updatedUser = await response.json();
-        // Update local state
-        setUserProfile(prev => prev ? { ...prev, ...updates } : null);
-        setCurrentUser((prev: any) => prev ? { ...prev, ...updates } : null);
-        alert('Profile updated successfully!');
-      } else {
-        const error = await response.json();
-        alert(`Failed to update profile: ${error.message || 'Unknown error'}`);
+        if (response.ok) {
+          const updatedUser = await response.json();
+          // Update local state
+          setUserProfile(prev => prev ? { ...prev, ...updates } : null);
+          setCurrentUser((prev: any) => prev ? { ...prev, ...updates } : null);
+          toast.success('Profile updated successfully!');
+        } else {
+          const error = await response.json();
+          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
+        }
+      } else if (fieldEdit === 'profile') {
+        const response = await fetch(`/api/user/${userId}/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updates)
+        });
+
+        if (response.ok) {
+          const updatedUser = await response.json();
+          // Update local state
+          setUserProfile(prev => prev ? { ...prev, ...updates } : null);
+          setCurrentUser((prev: any) => prev ? { ...prev, ...updates } : null);
+          toast.success("Profile updated successfully!");
+        } else {
+          const error = await response.json();
+          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
+        }
+      } else if (fieldEdit === 'business_details') {
+        const updateKey = Object.keys(updates)[0];
+        if (['returns', 'delivery', 'payment'].includes(updateKey)) {
+          updates = { policies: { ...updates } };
+        }
+
+        const response = await fetch(`/api/user/${userId}/business_details`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updates)
+        });
+
+        if (response.ok) {
+          const updatedUser = await response.json();
+          // Update local state
+          setUserProfile(prev => prev ? { ...prev, ...updates } : null);
+          setCurrentUser((prev: any) => prev ? { ...prev, ...updates } : null);
+          toast.success("Profile updated successfully!");
+        } else {
+          const error = await response.json();
+          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
+        }
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      toast.error('Failed to update profile. Please try again.');
     }
   };
 
@@ -194,37 +245,42 @@ export default function UserProfilePage() {
             id: userProfile.id,
             name: userProfile.name,
             email: userProfile.email || '',
+            phone: userProfile.phone || '',
             type: userProfile.userType as "farmer" | "trader",
             accountType: userProfile.accountType,
             location: userProfile.location || '',
-            description: (userProfile as any).description || '',
+            businessDescription: userProfile.businessDescription || '',
             image: userProfile.profileImage || '',
             storefrontImage: userProfile.storefrontImage || '',
             rating: userProfile.ratings?.rating || 0,
             totalReviews: userProfile.ratings?.totalReviews || 0,
             yearsActive: 0,
+            website: userProfile.website || '',
+            social: userProfile.social || {},
+            policies: {
+              delivery: userProfile.policies?.delivery ?? '',
+              payment: userProfile.policies?.payment ?? '',
+              returns: userProfile.policies?.returns ?? '',
+            },
+            specialties: userProfile.specialties || [],
+            businessName: userProfile.businessName || '',
             responseTime: userProfile.ratings?.responseTime || '',
             certifications: userProfile.ratings?.qualityCertifications || [],
             joinedDate: userProfile.joinedDate,
             verified: userProfile.verification?.verified || false
           }}
           products={userProfile.products || []}
-          onBack={() => router.push("/")}
+          onBack={() => router.back()}
           onViewProduct={(productId) => router.push(`/product/${productId}`)}
           onChat={handleChat}
           onEditProduct={(productId) => router.push(`/product/${productId}/edit`)}
           isOwnStorefront={isOwnProfile}
           onEditStorefrontImage={() => {
-            // TODO: Implement image editing
             console.log('Edit storefront image');
           }}
-          onUpdateStorefront={async (updates) => {
-            // TODO: Implement storefront updates
-            console.log('Update storefront:', updates);
-          }}
+          onUpdateStorefront={handleUpdateProfile}
           previewMode={false}
           onTogglePreviewMode={(mode) => {
-            // TODO: Implement preview mode
             console.log('Toggle preview mode:', mode);
           }}
           currentUser={currentUser}
@@ -234,7 +290,7 @@ export default function UserProfilePage() {
         <UserProfile
           userProfile={userProfile as any}
           currentUser={currentUser}
-          onBack={() => router.push("/")}
+          onBack={() => router.back()}
           isOwnProfile={isOwnProfile}
           previewMode={previewMode}
           onTogglePreviewMode={handleTogglePreviewMode}
@@ -282,6 +338,7 @@ export default function UserProfilePage() {
           </div>
         </div>
       )}
+      <Toaster />
     </div>
   );
 }

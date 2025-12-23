@@ -95,6 +95,7 @@ export const userProfiles = pgTable('user_profiles', {
   specialties: text('specialties').array(), // Array of specialties
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
+  aboutme: text('aboutme'),
 }, (table) => ({
   uniqueUserId: unique().on(table.userId),
 }));

@@ -1,44 +1,18 @@
 import { useState } from 'react';
 import { S3Image } from './S3Image';
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
-import { UserBadge, getUserVerificationLevel, getUserAccountType, AccountTypeBadge } from "./UserBadgeSystem";
+import { UserBadge, getUserVerificationLevel, AccountTypeBadge } from "./UserBadgeSystem";
 import { ReviewSliderModal } from "./ReviewSliderModal";
-import { 
-  User,
-  MapPin,
-  Calendar,
-  Star,
-  MessageCircle,
-  Package,
-  Store,
-  Phone,
-  Globe,
-  Facebook,
-  Instagram,
-  MessageSquare,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Edit,
-  Eye,
-  EyeOff,
-  Save,
-  X,
-  Camera,
-  Briefcase,
-  Award,
-  Users,
-  ChevronLeft,
-  Info
-} from "lucide-react";
+import { User, MapPin, Calendar, Star, MessageCircle, Package, Store, Phone, Globe, Facebook, Instagram, MessageSquare, Edit, Eye, Save,  X, Camera, ChevronLeft, Info } from "lucide-react";
 
 interface UserProfileData {
   id: string;
+  email: string;
+  aboutme?: string;
   name: string;
   userType: 'farmer' | 'trader' | 'buyer' | 'admin';
   accountType?: 'individual' | 'business';
@@ -84,7 +58,7 @@ interface UserProfileProps {
   currentUser?: any;
   onBack?: () => void;
   onEdit?: (updates: any) => void;
-  onUpdateProfile?: (updates: any) => void;
+  onUpdateProfile: (updates: any, fieldEdit: string) => void;
   isOwnProfile?: boolean;
   previewMode?: boolean;
   onTogglePreviewMode?: (mode: boolean) => void;
@@ -109,8 +83,10 @@ export function UserProfile({
   
   // Profile data state - directly use userProfile prop data
   const [profileData, setProfileData] = useState(() => ({
-    description: userProfile.description || '',
     businessHours: userProfile.businessHours || '',
+    businessName: userProfile.businessName || '',
+    businessDescription: userProfile.businessDescription || '',
+    aboutme: userProfile.aboutme || '',
     phone: userProfile.phone || '',
     email: userProfile.email || '',
     website: userProfile.website || '',
@@ -149,11 +125,11 @@ export function UserProfile({
     }
   };
 
-  const handleEditField = (field: string, currentValue: string) => {
+  const handleEditField = async (field: string, currentValue: string) => {
     setEditing({ field, value: currentValue });
   };
 
-  const handleSaveField = () => {
+  const handleSaveField = async (fieldEdit: string) => {
     if (!editing) return;
     
     const updates = {
@@ -161,7 +137,7 @@ export function UserProfile({
     };
     
     setProfileData(prev => ({ ...prev, ...updates }));
-    onUpdateProfile?.(updates);
+    await onUpdateProfile(updates, fieldEdit);
     setEditing(null);
   };
 
@@ -309,7 +285,7 @@ export function UserProfile({
                           <Star
                             key={i}
                             className={`w-4 h-4 ${
-                              i < Math.floor(userProfile.ratings.rating)
+                              i < Math.floor(userProfile.ratings!.rating)
                                 ? 'text-yellow-400 fill-current'
                                 : 'text-gray-300'
                             }`}
@@ -430,7 +406,7 @@ export function UserProfile({
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* About Section - Only show if has content or in edit mode */}
-          {(!previewMode || profileData.description) && (
+          {(!previewMode || profileData.aboutme) && (
             <Card className="border-primary/30">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -439,7 +415,7 @@ export function UserProfile({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {editing?.field === 'description' ? (
+                {editing?.field === 'aboutme' ? (
                   <div className="space-y-3">
                     <Textarea
                       value={editing.value}
@@ -448,7 +424,7 @@ export function UserProfile({
                       rows={4}
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={handleSaveField}>
+                      <Button size="sm" onClick={() => handleSaveField('profile')}>
                         <Save className="w-3 h-3 mr-1" />
                         Save
                       </Button>
@@ -461,13 +437,13 @@ export function UserProfile({
                 ) : (
                   <div className="flex items-start justify-between">
                     <p className="text-sm text-muted-foreground flex-1">
-                      {profileData.description || (isBuyer ? 'No description provided' : 'No experience listed')}
+                      {profileData.aboutme || (isBuyer ? 'No description provided' : 'No experience listed')}
                     </p>
                     {isOwnProfile && !previewMode && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditField('description', profileData.description)}
+                        onClick={() => handleEditField('aboutme', profileData.aboutme)}
                         className="ml-2"
                       >
                         <Edit className="w-3 h-3" />
@@ -489,22 +465,108 @@ export function UserProfile({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {userProfile.businessName && (
-                  <div>
-                    <h4 className="font-medium">Business Name</h4>
-                    <p className="text-muted-foreground">{userProfile.businessName}</p>
+                <label className="font-medium"> Business Name </label>
+                {editing?.field === 'businessName' ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editing.value}
+                      onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                      placeholder={'Tell us about your business name...'}
+                      rows={4}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleSaveField('business_details')}>
+                        <Save className="w-3 h-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm text-muted-foreground flex-1"> {profileData.businessName || 'Not provided'} </p>
+                    {isOwnProfile && !previewMode && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditField('businessName', profileData.businessName)}
+                        className="ml-2">
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 )}
-                {userProfile.businessDescription && (
-                  <div>
-                    <h4 className="font-medium">Description</h4>
-                    <p className="text-muted-foreground">{userProfile.businessDescription}</p>
+                
+                <label className="font-medium"> Business Description </label>
+                {editing?.field === 'businessDescription' ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editing.value}
+                      onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                      placeholder={'Tell us about your business...'}
+                      rows={4}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleSaveField('business_details')}>
+                        <Save className="w-3 h-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm text-muted-foreground flex-1"> {profileData.businessDescription || 'Not provided'} </p>
+                    {isOwnProfile && !previewMode && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditField('businessDescription', profileData.businessDescription)}
+                        className="ml-2">
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 )}
-                {userProfile.businessHours && (
-                  <div>
-                    <h4 className="font-medium">Business Hours</h4>
-                    <p className="text-muted-foreground">{userProfile.businessHours}</p>
+
+                <label className="font-medium"> Business Hours </label>
+                {editing?.field === 'businessHours' ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editing.value}
+                      onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                      placeholder={'9AM - 5PM...'}
+                      rows={4}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleSaveField('business_details')}>
+                        <Save className="w-3 h-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm text-muted-foreground flex-1"> {profileData.businessHours || 'Not provided'} </p>
+                    {isOwnProfile && !previewMode && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditField('businessHours', profileData.businessHours)}
+                        className="ml-2">
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -535,7 +597,7 @@ export function UserProfile({
                               placeholder="Facebook profile URL"
                             />
                             <div className="flex gap-2">
-                              <Button size="sm" onClick={handleSaveField}>
+                              <Button size="sm" onClick={() => handleSaveField('socialmedia')}>
                                 <Save className="w-3 h-3 mr-1" />
                                 Save
                               </Button>
@@ -576,7 +638,7 @@ export function UserProfile({
                               placeholder="Instagram profile URL"
                             />
                             <div className="flex gap-2">
-                              <Button size="sm" onClick={handleSaveField}>
+                              <Button size="sm" onClick={() => handleSaveField('socialmedia')}>
                                 <Save className="w-3 h-3 mr-1" />
                                 Save
                               </Button>
@@ -619,7 +681,7 @@ export function UserProfile({
                               placeholder="Telegram username"
                             />
                             <div className="flex gap-2">
-                              <Button size="sm" onClick={handleSaveField}>
+                              <Button size="sm" onClick={() => handleSaveField('socialmedia')}>
                                 <Save className="w-3 h-3 mr-1" />
                                 Save
                               </Button>
@@ -660,7 +722,7 @@ export function UserProfile({
                               placeholder="WhatsApp number"
                             />
                             <div className="flex gap-2">
-                              <Button size="sm" onClick={handleSaveField}>
+                              <Button size="sm" onClick={() => handleSaveField('socialmedia')}>
                                 <Save className="w-3 h-3 mr-1" />
                                 Save
                               </Button>
@@ -709,7 +771,7 @@ export function UserProfile({
                   {userProfile.products.slice(0, 6).map((product) => (
                     <div key={product.id} className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
                       <div className="flex gap-3">
-                        <div className="w-16 h-16 bg-muted rounded-lg flex-shrink-0">
+                        <div className="w-16 h-16 bg-muted rounded-lg shrink-0">
                           {product.imageUrl ? (
                             <S3Image 
                               src={product.imageUrl} 
@@ -766,7 +828,7 @@ export function UserProfile({
                 {userProfile.reviews.slice(0, 3).map((review: any) => (
                   <div key={review.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                         <span className="text-sm font-medium text-primary">
                           {review.reviewer.name.charAt(0).toUpperCase()}
                         </span>
@@ -824,7 +886,7 @@ export function UserProfile({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setAllReviews(userProfile.reviews);
+                        setAllReviews(userProfile.reviews ? userProfile.reviews : []);
                         setShowAllReviewsModal(true);
                       }}
                       className="text-xs text-muted-foreground hover:text-foreground h-auto p-1"

@@ -9,46 +9,10 @@ import { Badge } from "./ui/badge";
 import { S3Avatar } from "./S3Avatar";
 import { UserBadge, PublicVerificationStatus, getUserVerificationLevel, getUserAccountType, AccountTypeBadge } from "./UserBadgeSystem";
 import { Separator } from "./ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ReviewsService, type SellerStats } from "../services/reviews";
 import { ReviewSliderModal } from "./ReviewSliderModal";
 import { analyticsAPI } from "../services/analytics";
-import { 
-  ChevronLeft, 
-  MapPin, 
-  Calendar, 
-  Package, 
-  Star,
-  MessageCircle,
-  Eye,
-  Save,
-  X,
-  Edit,
-  Loader2,
-  Store,
-  Award,
-  User,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Users,
-  Camera,
-  Plus,
-  Phone,
-  Mail,
-  ExternalLink,
-  Shield,
-  Building,
-  Truck,
-  Leaf,
-  Facebook,
-  Instagram,
-  Music,
-  Video,
-  MessageSquare,
-  Play,
-  Globe
-} from "lucide-react";
+import { ChevronLeft, MapPin, Calendar, Package, Star, MessageCircle, Eye, Save, X, Edit, Loader2, Award,  User, CheckCircle, AlertCircle, Clock, Users, Camera, Plus, Phone, Mail, ExternalLink, Building, Facebook, Instagram, MessageSquare, Play, Globe } from "lucide-react";
 
 interface Product {
   id: string;
@@ -63,15 +27,17 @@ interface Product {
   imageUrl?: string;
   quantity: number;
   lastUpdated: string;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 interface Seller {
   id: string;
   name: string;
   type: 'farmer' | 'trader';
+  phone: string;
   accountType?: string;
   location: string;
-  description: string;
   image: string;
   rating: number;
   totalReviews: number;
@@ -80,7 +46,23 @@ interface Seller {
   certifications: string[];
   joinedDate: string;
   businessName?: string;
+  businessHours?: string;
+  businessDescription?: string;
+  social?: {
+    facebook?: string;
+    instagram?: string;
+    telegram?: string;
+    whatsapp?: string;
+    tiktok?: string;
+  };
+  policies: {
+    returns: string;
+    delivery: string;
+    payment: string;
+  };
+  specialties?: string[];
   profileImage?: string;
+  website?: string;
   storefrontImage?: string;
   email?: string;
   createdAt?: string;
@@ -96,7 +78,7 @@ interface SellerStorefrontProps {
   onEditProduct?: (productId: string) => void;
   isOwnStorefront?: boolean;
   onEditStorefrontImage?: () => void;
-  onUpdateStorefront?: (updates: any) => Promise<void>;
+  onUpdateStorefront: (updates: any, fieldEdit: string) => void;
   previewMode?: boolean;
   onTogglePreviewMode?: (mode: boolean) => void;
   currentUser?: any;
@@ -133,17 +115,17 @@ export function SellerStorefront({
   
   // Storefront data state - directly use seller prop data
   const [storefrontData, setStorefrontData] = useState(() => ({
-      description: seller.description || '',
-      businessHours: (seller as any).businessHours || '',
-      phone: (seller as any).phone || '',
-      email: seller.email || (seller as any).email || '',
-      website: (seller as any).website || '',
-      facebook: (seller as any).facebook || '',
-      instagram: (seller as any).instagram || '',
-      whatsapp: (seller as any).whatsapp || '',
-      tiktok: (seller as any).tiktok || '',
-      specialties: (seller as any).specialties || [],
-      policies: (seller as any).policies || {
+      businessDescription: seller.businessDescription || '',
+      businessHours: seller.businessHours || '',
+      phone: seller.phone || '',
+      email: seller.email || '',
+      website: seller.website || '',
+      facebook: seller.social?.facebook || '',
+      instagram: seller.social?.instagram || '',
+      whatsapp: seller.social?.whatsapp || '',
+      tiktok: seller.social?.tiktok || '',
+      specialties: seller.specialties || [],
+      policies: seller.policies || {
         returns: '',
         delivery: '',
         payment: ''
@@ -191,18 +173,19 @@ export function SellerStorefront({
   }, [seller.id]);
 
   // Update storefront data when seller prop changes (for real-time profile updates)
-  useEffect(() => {
+  /*useEffect(() => {
     const newStorefrontData = {
       description: seller.description || '',
-      businessHours: (seller as any).businessHours || '',
-      phone: (seller as any).phone || '',
-      email: (seller as any).email || '',
-      website: (seller as any).website || '',
-      facebook: (seller as any).facebook || '',
-      instagram: (seller as any).instagram || '',
-      whatsapp: (seller as any).whatsapp || '',
-      specialties: (seller as any).specialties || [],
-      policies: (seller as any).policies || {
+      businessHours: seller.businessHours || '',
+      phone: seller.phone || '',
+      email: seller.email || '',
+      website: seller.website || '',
+      facebook: seller.social?.facebook || '',
+      instagram: seller.social?.instagram || '',
+      whatsapp: seller.social?.whatsapp || '',
+      tiktok: seller.social?.tiktok || '',
+      specialties: seller.specialties || [],
+      policies: seller.policies || {
         returns: '',
         delivery: '',
         payment: ''
@@ -211,7 +194,7 @@ export function SellerStorefront({
     
     setStorefrontData(newStorefrontData);
   }, [seller]);
-
+*/
   const startEditing = (field: string, value: string) => {
     setEditing({ field, value });
   };
@@ -220,20 +203,12 @@ export function SellerStorefront({
     setEditing(null);
   };
 
-  const handleSave = async (field: string, value: string) => {
-    try {
-      const updates = { [field]: value };
-      setStorefrontData(prev => ({ ...prev, [field]: value }));
-      setEditing(null);
-      
-      if (onUpdateStorefront) {
-        await onUpdateStorefront(updates);
-      }
-    } catch (error) {
-      console.error('Failed to save:', error);
-      // Revert changes on error
-      setStorefrontData(prev => ({ ...prev, [field]: storefrontData[field as keyof typeof storefrontData] }));
-    }
+  const handleSave = async (field: string, value: string, correctfield: string) => {
+    const updates = { [correctfield]: value };
+    setStorefrontData(prev => ({ ...prev, [correctfield]: value }));
+    
+    await onUpdateStorefront(updates, field);
+    setEditing(null);
   };
 
   const handleSaveFarmName = async () => {
@@ -245,7 +220,7 @@ export function SellerStorefront({
     setSavingFarmName(true);
     try {
       // Update farm name via API
-      const token = localStorage.getItem('token');
+      /*const token = localStorage.getItem('token');
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
@@ -259,7 +234,7 @@ export function SellerStorefront({
 
       if (!response.ok) {
         throw new Error('Failed to save farm name');
-      }
+      }*/
 
       // Update local state
       setEditingFarmName(false);
@@ -268,9 +243,7 @@ export function SellerStorefront({
       seller.businessName = farmName.trim();
       
       // Call onUpdateStorefront if available to refresh parent component
-      if (onUpdateStorefront) {
-        await onUpdateStorefront({ businessName: farmName.trim() });
-      }
+      await onUpdateStorefront({ businessName: farmName.trim() }, 'business_details');
       
     } catch (error) {
       console.error('Failed to save farm name:', error);
@@ -287,18 +260,15 @@ export function SellerStorefront({
     setStorefrontData(prev => ({ ...prev, specialties: updatedSpecialties }));
     setEditing(null);
     
-    if (onUpdateStorefront) {
-      onUpdateStorefront({ specialties: updatedSpecialties });
-    }
+    onUpdateStorefront({ specialties: updatedSpecialties }, 'business_details');
+    
   };
 
   const removeSpecialty = (specialty: string) => {
-    const updatedSpecialties = storefrontData.specialties.filter(s => s !== specialty);
+    const updatedSpecialties = storefrontData.specialties.filter((s: string) => s !== specialty);
     setStorefrontData(prev => ({ ...prev, specialties: updatedSpecialties }));
     
-    if (onUpdateStorefront) {
-      onUpdateStorefront({ specialties: updatedSpecialties });
-    }
+    onUpdateStorefront({ specialties: updatedSpecialties }, 'business_details');
   };
   // Safety check for seller data
   if (!seller || !seller.name) {
@@ -352,7 +322,7 @@ export function SellerStorefront({
                     value={farmName}
                     onChange={(e) => setFarmName(e.target.value)}
                     className="text-2xl md:text-3xl font-bold h-12 px-3"
-                    placeholder={`Enter your ${seller.userType === 'farmer' ? 'farm' : 'store'} name`}
+                    placeholder={`Enter your ${seller.type === 'farmer' ? 'farm' : 'store'} name`}
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSaveFarmName();
@@ -396,7 +366,7 @@ export function SellerStorefront({
               </div>
             )}
             <p className="text-gray-600 text-sm">
-              {seller.userType === 'farmer' ? 'Farm' : 'Trading'} Storefront
+              {seller.type === 'farmer' ? 'Farm' : 'Trading'} Storefront
             </p>
           </div>
 
@@ -535,7 +505,7 @@ export function SellerStorefront({
                       {/* Profile section - no title needed since business name is at the top */}
                       
                       {/* Show owner name for transparency - always show for farmers and traders */}
-                      {(seller.userType === 'farmer' || seller.userType === 'trader') && (
+                      {(seller.type === 'farmer' || seller.type === 'trader') && (
                         <div className="flex items-center gap-2 mt-2">
                           <User className="w-3 h-3 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">
@@ -566,16 +536,13 @@ export function SellerStorefront({
                       // Non-owner view OR preview mode: Show simplified badges with icons
                       <div className="flex items-center gap-2">
                         <AccountTypeBadge 
-                          userType={seller.userType}
+                          userType={seller.type}
                           accountType={getUserAccountType(seller)}
                           size="sm"
                         />
                         <PublicVerificationStatus 
                           verificationLevel={getUserVerificationLevel(seller)}
                           size="sm"
-                          title={seller.businessName && seller.businessName !== seller.name 
-                            ? `Individual verification - Owner: ${seller.name}` 
-                            : undefined}
                         />
                       </div>
                     )}
@@ -639,7 +606,7 @@ export function SellerStorefront({
                         autoFocus
                       />
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleSave('businessHours', editing.value)}>
+                        <Button size="sm" onClick={() => handleSave('business_details', editing.value, 'businessHours')}>
                           <Save className="w-4 h-4 mr-1" />
                           Save
                         </Button>
@@ -793,7 +760,7 @@ export function SellerStorefront({
                           autoFocus
                         />
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleSave('phone', editing.value)}>
+                          <Button size="sm" onClick={() => handleSave('profile', editing.value, 'phone')}>
                             <Save className="w-4 h-4 mr-1" />
                             Save
                           </Button>
@@ -839,7 +806,7 @@ export function SellerStorefront({
                           autoFocus
                         />
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleSave('email', editing.value)}>
+                          <Button size="sm" onClick={() => handleSave('profile', editing.value, 'email')}>
                             <Save className="w-4 h-4 mr-1" />
                             Save
                           </Button>
@@ -884,7 +851,7 @@ export function SellerStorefront({
                           autoFocus
                         />
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleSave('website', editing.value)}>
+                          <Button size="sm" onClick={() => handleSave('profile', editing.value, 'website')}>
                             <Save className="w-4 h-4 mr-1" />
                             Save
                           </Button>
@@ -933,7 +900,7 @@ export function SellerStorefront({
                                   autoFocus
                                 />
                                 <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => handleSave('facebook', editing.value)}>
+                                  <Button size="sm" onClick={() => handleSave('socialmedia', editing.value, 'facebook')}>
                                     <Save className="w-4 h-4 mr-1" />
                                     Save
                                   </Button>
@@ -952,6 +919,9 @@ export function SellerStorefront({
                                 >
                                   <Facebook className="w-5 h-5 text-blue-600 group-hover:text-blue-700" />
                                 </a>
+                                <p className="text-sm text-muted-foreground">
+                                  {storefrontData.facebook || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -968,6 +938,9 @@ export function SellerStorefront({
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 border border-blue-200">
                                   <Facebook className="w-5 h-5 text-blue-600" />
                                 </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {(storefrontData?.facebook || '').trim() || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -995,7 +968,7 @@ export function SellerStorefront({
                                   autoFocus
                                 />
                                 <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => handleSave('instagram', editing.value)}>
+                                  <Button size="sm" onClick={() => handleSave('socialmedia', editing.value, 'instagram')}>
                                     <Save className="w-4 h-4 mr-1" />
                                     Save
                                   </Button>
@@ -1014,6 +987,9 @@ export function SellerStorefront({
                                 >
                                   <Instagram className="w-5 h-5 text-pink-600 group-hover:text-pink-700" />
                                 </a>
+                                <p className="text-sm text-muted-foreground">
+                                  {storefrontData.instagram ?? 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1030,6 +1006,9 @@ export function SellerStorefront({
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-pink-50 border border-pink-200">
                                   <Instagram className="w-5 h-5 text-pink-600" />
                                 </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {(storefrontData?.instagram || '').trim() || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1057,7 +1036,7 @@ export function SellerStorefront({
                                   autoFocus
                                 />
                                 <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => handleSave('whatsapp', editing.value)}>
+                                  <Button size="sm" onClick={() => handleSave('socialmedia', editing.value, 'whatsapp')}>
                                     <Save className="w-4 h-4 mr-1" />
                                     Save
                                   </Button>
@@ -1076,6 +1055,9 @@ export function SellerStorefront({
                                 >
                                   <MessageSquare className="w-5 h-5 text-green-600 group-hover:text-green-700" />
                                 </a>
+                                <p className="text-sm text-muted-foreground">
+                                  {storefrontData.whatsapp || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1092,6 +1074,9 @@ export function SellerStorefront({
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-50 border border-green-200">
                                   <MessageSquare className="w-5 h-5 text-green-600" />
                                 </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {(storefrontData?.whatsapp || '').trim() || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1119,7 +1104,7 @@ export function SellerStorefront({
                                   className="text-sm"
                                 />
                                 <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => handleSave('tiktok')}>
+                                  <Button size="sm" onClick={() => handleSave('socialmedia', editing.value, 'tiktok')}>
                                     <Save className="w-3 h-3 mr-1" />
                                     Save
                                   </Button>
@@ -1138,6 +1123,9 @@ export function SellerStorefront({
                                 >
                                   <Play className="w-5 h-5 text-white group-hover:text-gray-200" />
                                 </a>
+                                <p className="text-sm text-muted-foreground">
+                                  {storefrontData.tiktok || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1154,6 +1142,9 @@ export function SellerStorefront({
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black border border-gray-300">
                                   <Play className="w-5 h-5 text-white" />
                                 </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {(storefrontData?.tiktok || '').trim() || 'Not provided'}
+                                </p>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1257,7 +1248,7 @@ export function SellerStorefront({
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap gap-2 min-h-[2rem] items-center">
+                      <div className="flex flex-wrap gap-2 min-h-8 items-center">
                         {storefrontData.specialties.length > 0 ? (
                           storefrontData.specialties.map((specialty: string, index: number) => (
                             <Badge key={index} variant="secondary" className="text-xs flex items-center gap-1">
@@ -1307,7 +1298,7 @@ export function SellerStorefront({
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => startEditing('description', storefrontData.description)}
+                    onClick={() => startEditing('description', storefrontData.businessDescription)}
                     className="opacity-60 hover:opacity-100"
                   >
                     <Edit className="w-4 h-4 mr-1" />
@@ -1327,7 +1318,7 @@ export function SellerStorefront({
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <Button onClick={() => handleSave('description', editing.value)}>
+                    <Button onClick={() => handleSave('business_details', editing.value, 'businessDescription')}>
                       <Save className="w-4 h-4 mr-1" />
                       Save Description
                     </Button>
@@ -1339,7 +1330,7 @@ export function SellerStorefront({
               ) : (
                 <div className="space-y-4">
                   <p className="text-muted-foreground leading-relaxed">
-                    {storefrontData.description || (isOwnStorefront && !previewMode
+                    {storefrontData.businessDescription || (isOwnStorefront && !previewMode
                       ? 'Tell customers about your business. Click "Edit Description" to add information about your farming experience, quality standards, and what makes your products special.'
                       : 'No description available.'
                     )}
@@ -1378,7 +1369,7 @@ export function SellerStorefront({
                     {editing?.field === 'delivery' ? (
                       <div className="space-y-2">
                         <Textarea
-                          value={editing.value}
+                          value={editing.value ?? ''}
                           onChange={(e) => setEditing({ ...editing, value: e.target.value })}
                           placeholder="Describe your delivery options, areas covered, delivery times, and shipping costs..."
                           rows={3}
@@ -1390,7 +1381,7 @@ export function SellerStorefront({
                               ...prev,
                               policies: { ...prev.policies, delivery: editing!.value }
                             }));
-                            handleSave('policies', { ...storefrontData.policies, delivery: editing!.value });
+                            handleSave('business_details', editing!.value, 'delivery');
                           }}>
                             <Save className="w-4 h-4 mr-1" />
                             Save
@@ -1427,7 +1418,7 @@ export function SellerStorefront({
                     {editing?.field === 'payment' ? (
                       <div className="space-y-2">
                         <Textarea
-                          value={editing.value}
+                          value={editing.value ?? ''}
                           onChange={(e) => setEditing({ ...editing, value: e.target.value })}
                           placeholder="List accepted payment methods: Cash on delivery, bank transfer, mobile payments, etc..."
                           rows={3}
@@ -1439,7 +1430,7 @@ export function SellerStorefront({
                               ...prev,
                               policies: { ...prev.policies, payment: editing!.value }
                             }));
-                            handleSave('policies', { ...storefrontData.policies, payment: editing!.value });
+                            handleSave('business_details', editing!.value, 'payment');
                           }}>
                             <Save className="w-4 h-4 mr-1" />
                             Save
@@ -1476,7 +1467,7 @@ export function SellerStorefront({
                     {editing?.field === 'returns' ? (
                       <div className="space-y-2">
                         <Textarea
-                          value={editing.value}
+                          value={editing.value ?? ''}
                           onChange={(e) => setEditing({ ...editing, value: e.target.value })}
                           placeholder="Describe your quality guarantee, return policy, and how you handle customer concerns..."
                           rows={3}
@@ -1488,7 +1479,7 @@ export function SellerStorefront({
                               ...prev,
                               policies: { ...prev.policies, returns: editing!.value }
                             }));
-                            handleSave('policies', { ...storefrontData.policies, returns: editing!.value });
+                            handleSave('business_details', editing!.value, 'returns');
                           }}>
                             <Save className="w-4 h-4 mr-1" />
                             Save
@@ -1547,7 +1538,7 @@ export function SellerStorefront({
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           <S3Image 
-                            src={product.imageUrl || product.image || undefined} 
+                            src={product.imageUrl || product.image || ''} 
                             alt={product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                           />

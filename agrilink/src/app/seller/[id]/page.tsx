@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AppHeader } from "@/components/AppHeader";
 import { SellerStorefront } from "@/components/SellerStorefront";
 import { ChatInterface } from "@/components/ChatInterface";
-import { ChevronLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 export default function SellerStorefrontPage() {
   const [seller, setSeller] = useState<any>(null);
@@ -41,9 +41,8 @@ export default function SellerStorefrontPage() {
         fetch(`/api/user/${sellerId}/public`),
         fetch(`/api/products?sellerId=${sellerId}`)
       ]);
-
+      const sellerData = await sellerResponse.json();
       if (sellerResponse.ok) {
-        const sellerData = await sellerResponse.json();
         setSeller(sellerData.user);
       }
 
@@ -143,7 +142,7 @@ export default function SellerStorefrontPage() {
           console.log('✅ API Response:', responseData);
 
           // Update local state with the S3 key returned from API
-          setSeller(prev => ({
+          setSeller((prev: any) => ({
             ...prev,
             storefrontImage: responseData.user?.storefrontImage || responseData.storefrontImage || dataUrl
           }));
@@ -163,30 +162,84 @@ export default function SellerStorefrontPage() {
   };
 
   // Handle storefront updates
-  const handleUpdateStorefront = async (updates: any) => {
+  const handleUpdateStorefront = async (updates: any, fieldEdit: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(updates),
-      });
+      if (fieldEdit === 'socialmedia') {
+        const response = await fetch(`/api/user/${sellerId}/social`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updates)
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to update storefront');
+        if (response.ok) {
+          const updatedUser = await response.json();
+          setSeller((prev: any) => ({
+            ...prev,
+            ...updates
+          }));
+          await loadSellerData();
+          toast.success("Profile updated successfully!");
+        } else {
+          const error = await response.json();
+          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
+        }
+      } else if (fieldEdit === 'profile') {
+        const response = await fetch(`/api/user/${sellerId}/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update storefront');
+        }
+
+        // Update local state
+        setSeller((prev: any) => ({
+          ...prev,
+          ...updates
+        }));
+
+        // Refresh seller data to get latest changes
+        await loadSellerData();
+        toast.success("Profile updated successfully!");
+      } else if (fieldEdit === 'business_details') {
+        const updateKey = Object.keys(updates)[0];
+        if (['returns', 'delivery', 'payment'].includes(updateKey)) {
+          updates = { policies: { ...updates } };
+        }
+
+        const response = await fetch(`/api/user/${sellerId}/business_details`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updates)
+        });
+
+        if (response.ok) {
+          const updatedUser = await response.json();
+          // Update local state
+          setSeller((prev: any) => ({
+            ...prev,
+            ...updates
+          }));
+          await loadSellerData();
+          
+          toast.success("Profile updated successfully!");
+        } else {
+          const error = await response.json();
+          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
+        }
       }
-
-      // Update local state
-      setSeller(prev => ({
-        ...prev,
-        ...updates
-      }));
-
-      // Refresh seller data to get latest changes
-      await loadSellerData();
     } catch (error) {
       console.error('Failed to update storefront:', error);
       throw error;
@@ -225,7 +278,7 @@ export default function SellerStorefrontPage() {
         <SellerStorefront
           seller={seller}
           products={products}
-          onBack={() => router.push("/")}
+          onBack={() => router.back()}
           onViewProduct={(productId) => router.push(`/product/${productId}`)}
           onChat={handleChat}
           onEditProduct={(productId) => router.push(`/product/${productId}/edit`)}
@@ -279,6 +332,7 @@ export default function SellerStorefrontPage() {
           </div>
         </div>
       )}
+      <Toaster />
     </div>
   );
 }
