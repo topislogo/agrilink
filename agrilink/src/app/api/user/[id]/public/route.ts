@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from '@/lib/db';
 
-
-
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,14 +19,16 @@ export async function GET(
         SELECT 
           u.id, u.name, u.email, u."createdAt" as "joinedDate",
           u."userType", u."accountType",
-          l.city as location, l.region, up."profileImage", up."storefrontImage", up.phone, up.website,
+          l.city as location, l.region, up."profileImage", up."storefrontImage", up.phone, up."website", up."aboutme",
           uv.verified, uv."phoneVerified", uv."verificationStatus", 
-          bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+          bd."businessName", bd."businessHours", bd."businessDescription", bd."businessLicenseNumber", bd.specialties, bd.policies,
+          us."instagram", us."whatsapp", us."facebook", us."tiktok", us."telegram"
         FROM users u
         LEFT JOIN user_profiles up ON u.id = up."userId"
         LEFT JOIN locations l ON up."locationId" = l.id
         LEFT JOIN user_verification uv ON u.id = uv."userId"
         LEFT JOIN business_details bd ON u.id = bd."userId"
+        LEFT JOIN user_social us ON u.id = us."userId"
         WHERE u.email = ${identifier}
         LIMIT 1
       `;
@@ -37,14 +36,16 @@ export async function GET(
       userData = await sql`
         SELECT 
           u.id, u.name, u.email, u."userType", u."accountType", u."createdAt" as "joinedDate",
-          l.city as location, l.region, up."profileImage", up."storefrontImage", up.phone, up.website,
+          l.city as location, l.region, up."profileImage", up."storefrontImage", up.phone, up."website", up."aboutme",
           uv.verified, uv."phoneVerified", uv."verificationStatus", 
-          bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+          bd."businessName", bd."businessHours", bd."businessDescription", bd."businessLicenseNumber", bd.specialties, bd.policies,
+          us."instagram", us."whatsapp", us."facebook", us."tiktok", us."telegram" 
         FROM users u
         LEFT JOIN user_profiles up ON u.id = up."userId"
         LEFT JOIN locations l ON up."locationId" = l.id
         LEFT JOIN user_verification uv ON u.id = uv."userId"
         LEFT JOIN business_details bd ON u.id = bd."userId"
+        LEFT JOIN user_social us ON u.id = us."userId"
         WHERE u.id = ${identifier}
         LIMIT 1
       `;
@@ -151,21 +152,25 @@ export async function GET(
       storefrontImage: user.storefrontImage,
       phone: user.phone,
       website: user.website,
+      aboutme: user.aboutme,
       
       // Business info (for business accounts)
       businessName: user.businessName,
       businessDescription: user.businessDescription,
-      businessHours: null,
+      businessHours: user.businessHours,
       specialties: user.specialties,
-      policies: null,
-      
+      policies: {
+        returns: user.policies?.returns ?? null,
+        delivery: user.policies?.delivery ?? null,
+        payment: user.policies?.payment ?? null,
+      },
       // Social media (placeholder)
       social: {
-        facebook: null,
-        instagram: null,
-        telegram: null,
-        whatsapp: null,
-        tiktok: null
+        facebook: user.facebook,
+        instagram: user.instagram,
+        telegram: user.telegram,
+        whatsapp: user.whatsapp,
+        tiktok: user.tiktok
       },
       
       // Verification status (flattened for compatibility with getUserVerificationLevel)
