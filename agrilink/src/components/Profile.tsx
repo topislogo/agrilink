@@ -35,6 +35,8 @@ import {
 import { formatMemberSinceDate } from "../utils/dates";
 import { AddressManagement } from "./AddressManagement";
 import { PhoneVerification } from "./PhoneVerification";
+import { PasswordStrengthIndicator } from "./PasswordStrengthIndicator";
+import { validatePassword } from "../utils/password-strength";
 
 interface ProfileProps {
   user: any;
@@ -321,13 +323,10 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long');
-      return;
-    }
-
-    if (passwordData.newPassword.match(/[a-z]/) === null || passwordData.newPassword.match(/[A-Z]/) === null || passwordData.newPassword.match(/\d/) === null) {
-      setPasswordError('Password needs a number, a lowercase letter, and an uppercase letter');
+    // Use password strength validation
+    const passwordValidation = validatePassword(passwordData.newPassword);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.message || 'Password does not meet requirements');
       return;
     }
 
@@ -1041,6 +1040,7 @@ export function Profile({ user, onBack, onEditProfile, onShowVerification, onUpd
                           )}
                         </Button>
                       </div>
+                      <PasswordStrengthIndicator password={passwordData.newPassword} />
                     </div>
 
                     {/* Confirm Password */}

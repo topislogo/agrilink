@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { Resend } from 'resend';
+import { validatePassword } from '@/utils/password-strength';
 import { 
   users, 
   userProfiles, 
@@ -30,6 +31,15 @@ export async function POST(request: NextRequest) {
     if (!email || !password || !name || !userType || !accountType || !location || !region) {
       return NextResponse.json(
         { error: 'All fields are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return NextResponse.json(
+        { error: passwordValidation.message || 'Password does not meet requirements' },
         { status: 400 }
       );
     }

@@ -84,6 +84,7 @@ export const users = pgTable('users', {
 });
 
 // User profiles table - Extended profile information with location reference
+// Note: storefrontDescription has been moved to storefront_details table
 export const userProfiles = pgTable('user_profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -91,9 +92,7 @@ export const userProfiles = pgTable('user_profiles', {
   phone: text('phone'),
   profileImage: text('profileImage'),
   storefrontImage: text('storefrontImage'),
-  storefrontDescription: text('storefrontDescription'), // Customer-facing storefront description (separate from businessDescription)
   website: text('website'),
-  specialties: text('specialties').array(), // Array of specialties
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
 }, (table) => ({

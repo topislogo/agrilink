@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AppHeader } from "@/components/AppHeader";
 import { CountryCodeSelector } from "@/components/CountryCodeSelector";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
+import { validatePassword } from "@/utils/password-strength";
 import { Eye, EyeOff, Leaf, Mail, Lock, User, Phone, MapPin, Building2, ArrowLeft } from "lucide-react";
 import { myanmarRegions } from "@/utils/regions";
 
@@ -73,14 +75,14 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return false;
     }
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    
+    // Use password strength validation
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message || 'Password does not meet requirements');
       return false;
     }
-    if (formData.password.match(/[a-z]/) === null || formData.password.match(/[A-Z]/) === null || formData.password.match(/\d/) === null) {
-      setError('Password needs a number, a lowercase letter, and an uppercase letter');
-      return false;
-    }
+    
     if (!formData.email.includes('@')) {
       setError('Please enter a valid email address');
       return false;
@@ -216,7 +218,7 @@ export default function RegisterPage() {
           <Input
             id="password"
             type={showPassword ? "text" : "password"}
-            placeholder="Create a password (min. 8 characters)"
+            placeholder="Create a strong password"
             value={formData.password}
             onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
             className="pl-10 pr-10"
@@ -230,6 +232,7 @@ export default function RegisterPage() {
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
+        <PasswordStrengthIndicator password={formData.password} />
       </div>
 
       <div className="space-y-2">

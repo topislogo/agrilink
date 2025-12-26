@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { sql } from '@/lib/db';
+import { validatePassword } from '@/utils/password-strength';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,8 +56,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Current password and new password are required' }, { status: 400 });
     }
 
-    if (newPassword.length < 8) {
-      return NextResponse.json({ message: 'New password must be at least 8 characters long' }, { status: 400 });
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      return NextResponse.json({ 
+        message: passwordValidation.message || 'Password does not meet requirements' 
+      }, { status: 400 });
     }
 
     // Get user from database

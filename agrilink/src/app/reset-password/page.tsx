@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
+import { validatePassword } from "@/utils/password-strength";
 import { Eye, EyeOff, Lock, CheckCircle } from "lucide-react";
 
 function ResetPasswordContent() {
@@ -50,14 +52,10 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (formData.newPassword.length < 8) {
-      setError('Password must be at least 8 characters long');
-      setIsLoading(false);
-      return;
-    }
-
-    if (formData.newPassword.match(/[a-z]/) === null || formData.newPassword.match(/[A-Z]/) === null || formData.newPassword.match(/\d/) === null) {
-      setError('Password needs a number, a lowercase letter, and an uppercase letter');
+    // Use password strength validation
+    const passwordValidation = validatePassword(formData.newPassword);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message || 'Password does not meet requirements');
       setIsLoading(false);
       return;
     }
@@ -172,6 +170,7 @@ function ResetPasswordContent() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <PasswordStrengthIndicator password={formData.newPassword} />
               </div>
 
               <div className="space-y-2">
