@@ -60,12 +60,15 @@ interface Product {
   imageUrl?: string;
   quantity: number;
   lastUpdated: string;
+  availableQuantity?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Seller {
   id: string;
   name: string;
-  type: 'farmer' | 'trader';
+  userType: 'farmer' | 'trader';
   accountType?: string;
   location: string;
   description: string;
@@ -76,8 +79,19 @@ interface Seller {
   responseTime: string;
   joinedDate: string;
   businessName?: string;
+  businessDescription?: string;
   profileImage?: string;
   storefrontImage?: string;
+  storefrontDelivery?: string;
+  storefrontPaymentMethods?: string;
+  storefrontReturnPolicy?: string;
+  website?: string;
+  social?: {};
+  facebook?: string;
+  instagram?: string;
+  whatsapp?: string;
+  tiktok?: string;
+  specialties?: string[];
   email?: string;
   phone?: string;
   createdAt?: string;
@@ -659,7 +673,7 @@ export function SellerStorefront({
                     {isOwnStorefront && !previewMode ? (
                       // Owner view (not in preview): Show detailed UserBadge with progress
                       <UserBadge 
-                        userType={seller.type}
+                        userType={seller.userType}
                         accountType={getUserAccountType(seller)}
                         verificationLevel={getUserVerificationLevel(seller)}
                         size="sm"
@@ -675,9 +689,6 @@ export function SellerStorefront({
                         <PublicVerificationStatus 
                           verificationLevel={getUserVerificationLevel(seller)}
                           size="sm"
-                          title={seller.businessName && seller.businessName !== seller.name 
-                            ? `Individual verification - Owner: ${seller.name}` 
-                            : undefined}
                         />
                       </div>
                     )}
@@ -1534,7 +1545,7 @@ export function SellerStorefront({
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           <S3Image 
-                            src={product.imageUrl || product.image || undefined} 
+                            src={product.imageUrl || product.image || ''} 
                             alt={product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                           />
@@ -1553,7 +1564,7 @@ export function SellerStorefront({
 
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Package className="w-3 h-3" />
-                              <span>{product.quantity} available</span>
+                              <span>{product.availableQuantity} available</span>
                             </div>
 
                             <div className="flex items-center gap-2">
