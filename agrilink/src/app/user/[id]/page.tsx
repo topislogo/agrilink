@@ -253,7 +253,6 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader currentUser={currentUser} onLogout={handleLogout} />
-      
       {isSeller ? (
         <div className="max-w-5xl mx-auto px-4 py-8">
           <SellerStorefront
@@ -262,7 +261,7 @@ export default function UserProfilePage() {
             name: userProfile.name,
             email: userProfile.email || '',
             phone: userProfile.phone || '',
-            type: userProfile.userType as "farmer" | "trader",
+            userType: userProfile.userType as "farmer" | "trader",
             accountType: userProfile.accountType,
             location: userProfile.location || '',
             description: (userProfile as any).storefrontDescription || (userProfile as any).businessDescription || '',
@@ -277,18 +276,11 @@ export default function UserProfilePage() {
             yearsActive: 0,
             website: userProfile.website || '',
             social: userProfile.social || {},
-            policies: {
-              delivery: userProfile.policies?.delivery ?? '',
-              payment: userProfile.policies?.payment ?? '',
-              returns: userProfile.policies?.returns ?? '',
-            },
             specialties: userProfile.specialties || [],
             businessName: userProfile.businessName || '',
             responseTime: userProfile.ratings?.responseTime || '',
             joinedDate: userProfile.joinedDate,
             verified: userProfile.verification?.verified || false,
-            phone: (userProfile as any).phone || '',
-            website: (userProfile as any).website || '',
             facebook: (userProfile as any).facebook || '',
             instagram: (userProfile as any).instagram || '',
             whatsapp: (userProfile as any).whatsapp || '',
@@ -303,7 +295,7 @@ export default function UserProfilePage() {
           onEditStorefrontImage={() => {
             console.log('Edit storefront image');
           }}
-          onUpdateStorefront={async (updates, fieldEdit?) => {
+          onUpdateStorefront={async (updates) => {
             try {
               const responseData = await updateStorefront(updates, async () => {
                 // Wait a bit to ensure database commit completes
