@@ -397,9 +397,20 @@ export default function OfferDetailsPage() {
         {/* Header */}
         <div className="space-y-4">
           {/* Back button row */}
-          <Button variant="ghost" onClick={() => router.push("/offers")} className="h-9 px-3 -ml-3">
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              // If admin, go back to complaints page, otherwise go to offers
+              if (user.userType === 'admin') {
+                router.push("/admin/complaints");
+              } else {
+                router.push("/offers");
+              }
+            }} 
+            className="h-9 px-3 -ml-3"
+          >
             <ChevronLeft className="w-4 h-4 mr-2" />
-            Back
+            {user.userType === 'admin' ? 'Back to Complaints' : 'Back'}
           </Button>
           
           {/* Title section */}
@@ -561,8 +572,8 @@ export default function OfferDetailsPage() {
               />
             )}
 
-            {/* Reviews Section - Only for completed offers */}
-            {getEffectiveStatus(offer) === 'completed' && (
+            {/* Reviews Section - Only for completed offers and not for admin */}
+            {getEffectiveStatus(offer) === 'completed' && user.userType !== 'admin' && (
               <ReviewSection
                 offerId={offer.id}
                 currentUserId={user.id}

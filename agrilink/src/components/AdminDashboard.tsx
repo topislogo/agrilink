@@ -30,8 +30,8 @@ interface AdminStats {
   pendingVerifications: number;
   totalProducts: number;
   activeTransactions: number;
-  reportedContent: number;
   platformRevenue: number;
+  pendingDisputes?: number;
 }
 
 interface RecentUser {
@@ -55,17 +55,12 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
     pendingVerifications: 0,
     totalProducts: 0,
     activeTransactions: 0,
-    reportedContent: 0,
     platformRevenue: 0,
   });
 
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [reportedProducts] = useState([
-    { id: '1', name: 'Spam Product', seller: 'Unknown', price: 100, reportedCount: 5 },
-    { id: '2', name: 'Fake Listing', seller: 'Suspicious', price: 200, reportedCount: 3 },
-  ]);
 
   const [recentTransactions] = useState([
     { id: '1', amount: 150, buyer: 'John Doe', seller: 'Jane Smith', date: '2 hours ago' },
@@ -94,13 +89,23 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
         },
       });
 
+      // Fetch complaints for count
+      const complaintsResponse = await fetch('/api/admin/complaints', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
       if (statsResponse.ok && verificationResponse.ok) {
         const statsData = await statsResponse.json();
         const verificationData = await verificationResponse.json();
+        const complaintsData = complaintsResponse.ok ? await complaintsResponse.json() : { statistics: { submitted: 0, total: 0 } };
 
         const pendingVerifications = verificationData.requests?.filter(
           (req: any) => req.status === 'under_review' || req.verificationStatus === 'under_review'
         ).length || 0;
+
+        const pendingComplaints = complaintsData.statistics?.submitted || 0;
 
         // Fetch recent users from users API
         const recentUsersResponse = await fetch('/api/users/recent', {
@@ -120,7 +125,6 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
           pendingVerifications,
           totalProducts: statsData.totalProducts || 0,
           activeTransactions: 156, // Keep mock data for now
-          reportedContent: 8, // Keep mock data for now
           platformRevenue: 45670, // Keep mock data for now
         });
 
@@ -146,15 +150,31 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
   };
 
   // Helper function to format relative time
-  const getRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const getRelativeTime = (dateString: string | Date | null | undefined) => {
+    if (!dateString) return 'Unknown';
     
-    if (diffInSeconds < 60) return 'just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    try {
+      const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return 'Unknown';
+      }
+      
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+      
+      if (diffInSeconds < 0) return 'just now'; // Future date
+      if (diffInSeconds < 60) return 'just now';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return 'Unknown';
+    }
   };
 
   return (
@@ -302,6 +322,14 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
                 <Button 
                   variant="outline" 
                   className="h-20 flex-col gap-2"
+                  onClick={() => window.location.href = '/admin/complaints'}
+                >
+                  <AlertTriangle className="h-6 w-6" />
+                  <span className="text-sm">Manage Complaints</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex-col gap-2"
                 >
                   <Package className="h-6 w-6" />
                   <span className="text-sm">Moderate Products</span>
@@ -424,55 +452,6 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
             </Card>
           </div>
 
-          {/* Bottom Row - Reported Content */}
-          <div className="grid grid-cols-1 gap-6">
-            {/* Reported Content */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Flag className="h-5 w-5" />
-                  Reported Content
-                </CardTitle>
-                <CardDescription>Items requiring attention</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {reportedProducts.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{product.name}</p>
-                        <p className="text-sm text-gray-600 truncate">by {product.seller}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="destructive" className="text-xs">
-                            {product.reportedCount} reports
-                          </Badge>
-                          <span className="text-sm text-gray-600">${product.price}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-1 ml-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleProductAction(product.id, 'approve')}
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleProductAction(product.id, 'remove')}
-                        >
-                          <Ban className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
     </div>

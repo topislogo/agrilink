@@ -325,6 +325,18 @@ export const offerTimeline = pgTable('offer_timeline', {
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
 });
 
+// Offer complaints table - Store complaints for future admin review (Post-MVP: full resolution system)
+export const offerComplaints = pgTable('offer_complaints', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  offerId: uuid('offerId').notNull().references(() => offers.id, { onDelete: 'cascade' }),
+  raisedBy: uuid('raisedBy').notNull().references(() => users.id, { onDelete: 'cascade' }), // Buyer who filed complaint
+  reportedUserId: uuid('reportedUserId').notNull().references(() => users.id, { onDelete: 'cascade' }), // Seller being reported
+  complaintType: text('complaintType').notNull().default('unfair_cancellation'), // 'unfair_cancellation', 'delivery_issue', 'other'
+  reason: text('reason').notNull(),
+  status: text('status').default('submitted'), // 'submitted' (for post-MVP, admin will review later)
+  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
+});
+
 // Offer reviews table - Reviews and ratings for completed offers
 export const offerReviews = pgTable('offer_reviews', {
   id: uuid('id').primaryKey().defaultRandom(),

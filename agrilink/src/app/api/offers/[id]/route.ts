@@ -62,7 +62,10 @@ export async function PUT(
         o."buyerId",
         o."sellerId",
         o.status,
+        o.quantity as "offerQuantity",
+        o."productId",
         p.name as "productName",
+        p."availableStock",
         buyer.name as "buyerName",
         seller.name as "sellerName"
       FROM offers o
@@ -105,6 +108,41 @@ export async function PUT(
     if (status === 'received') {
       // For items marked as received by buyer, auto-complete
       finalStatus = 'completed';
+    }
+
+    // Handle product quantity updates based on offer status changes
+    const oldStatus = existingOffer.status;
+    const offerQuantity = existingOffer.offerQuantity || 1;
+    const productId = existingOffer.productId;
+    const currentAvailableStock = existingOffer.availableStock;
+
+    // Update product availableStock when offer status changes
+    if (currentAvailableStock && !isNaN(parseInt(currentAvailableStock))) {
+      let newAvailableStock = parseInt(currentAvailableStock);
+
+      // If offer is being accepted, reduce the stock
+      if (finalStatus === 'accepted' && oldStatus !== 'accepted') {
+        newAvailableStock = Math.max(0, newAvailableStock - offerQuantity);
+        console.log(`📦 Reducing product stock: ${currentAvailableStock} - ${offerQuantity} = ${newAvailableStock}`);
+      }
+      // If offer was accepted and is now being cancelled/rejected, restore the stock
+      else if (oldStatus === 'accepted' && (finalStatus === 'cancelled' || finalStatus === 'rejected')) {
+        newAvailableStock = newAvailableStock + offerQuantity;
+        console.log(`📦 Restoring product stock: ${currentAvailableStock} + ${offerQuantity} = ${newAvailableStock}`);
+      }
+
+      // Update the product's availableStock if it changed
+      if (newAvailableStock !== parseInt(currentAvailableStock)) {
+        await db
+          .update(productsTable)
+          .set({ 
+            availableStock: newAvailableStock.toString(),
+            updatedAt: new Date()
+          })
+          .where(eq(productsTable.id, productId));
+        
+        console.log(`✅ Product stock updated: ${currentAvailableStock} -> ${newAvailableStock}`);
+      }
     }
 
     // Update the offer with new status workflow using Drizzle
@@ -390,8 +428,10 @@ export async function GET(
     // Check if user has permission to view this offer
     const isSeller = offer.sellerId === user.userId;
     const isBuyer = offer.buyerId === user.userId;
+    const isAdmin = user.userType === 'admin';
 
-    if (!isSeller && !isBuyer) {
+    // Allow buyer, seller, or admin to view the offer
+    if (!isSeller && !isBuyer && !isAdmin) {
       return NextResponse.json(
         { message: 'Forbidden' },
         { status: 403 }

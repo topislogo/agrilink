@@ -32,15 +32,24 @@ export async function GET(request: NextRequest) {
         id,
         name,
         email,
-        "userType" as "userType",
-        "createdAt" as "createdAt"
+        "userType" as "user_type",
+        "createdAt" as "created_at"
       FROM users 
       WHERE "userType" != 'admin'
       ORDER BY "createdAt" DESC
       LIMIT 5
     `;
 
-    return NextResponse.json(recentUsers);
+    // Convert dates to ISO strings for JSON serialization
+    const formattedUsers = recentUsers.map((user: any) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      user_type: user.user_type,
+      created_at: user.created_at ? new Date(user.created_at).toISOString() : new Date().toISOString()
+    }));
+
+    return NextResponse.json(formattedUsers);
 
   } catch (error: any) {
     console.error('❌ Error fetching recent users:', error);
