@@ -11,7 +11,9 @@ import {
   userVerification, 
   userRatings, 
   businessDetails,
-  locations
+  storefrontDetails,
+  locations,
+  userSocial
 } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { sql as dbSql } from '@/lib/db';
@@ -55,7 +57,13 @@ export async function GET(request: NextRequest) {
       SELECT 
         u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
         bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
-        l.city, l.region, up.phone, up."profileImage", up."storefrontImage",
+        l.city, l.region, up.phone, up."profileImage", up."storefrontImage", up.website as "profileWebsite",
+        sd.description as "storefrontDescription",
+        sd.delivery as "storefrontDelivery",
+        sd."paymentMethods" as "storefrontPaymentMethods",
+        sd."returnPolicy" as "storefrontReturnPolicy",
+        sd."businessHours" as "storefrontBusinessHours",
+        us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
         uv.verified, uv."phoneVerified", uv."verificationStatus", uv."verificationDocuments", uv."rejectedDocuments", uv."businessDetailsCompleted",
         uv."verificationSubmitted",
         vr."submittedAt" as "verificationSubmittedAt",
@@ -66,6 +74,8 @@ export async function GET(request: NextRequest) {
       LEFT JOIN user_verification uv ON u.id = uv."userId"
       LEFT JOIN user_ratings ur ON u.id = ur."userId"
       LEFT JOIN business_details bd ON u.id = bd."userId"
+      LEFT JOIN storefront_details sd ON u.id = sd."userId"
+      LEFT JOIN user_social us ON u.id = us."userId"
       LEFT JOIN verification_requests vr ON u.id = vr."userId" AND vr.status = 'under_review'
       WHERE u.id = ${user.userId}
     `;
@@ -120,6 +130,11 @@ export async function GET(request: NextRequest) {
         phone: userProfile.phone,
         profileImage: userProfile.profileImage,
         storefrontImage: userProfile.storefrontImage,
+        storefrontDescription: userProfile.storefrontDescription,
+        storefrontDelivery: userProfile.storefrontDelivery,
+        storefrontPaymentMethods: userProfile.storefrontPaymentMethods,
+        storefrontReturnPolicy: userProfile.storefrontReturnPolicy,
+        storefrontBusinessHours: userProfile.storefrontBusinessHours,
         verified: userProfile.verified,
         phoneVerified: userProfile.phoneVerified,
         businessName: userProfile.businessName,
@@ -137,7 +152,12 @@ export async function GET(request: NextRequest) {
         totalReviews: userProfile.totalReviews || 0,
         joinedDate: userProfile.createdAt,
         pendingEmail: userProfile.pendingEmail,
-        specialties: userProfile.specialties
+        specialties: userProfile.specialties,
+        website: userProfile.socialWebsite || userProfile.profileWebsite || null,
+        facebook: userProfile.facebook || null,
+        instagram: userProfile.instagram || null,
+        whatsapp: userProfile.whatsapp || null,
+        tiktok: userProfile.tiktok || null
       }
     });
 
@@ -169,6 +189,11 @@ export async function PUT(request: NextRequest) {
     const { 
       profileImage, 
       storefrontImage,
+      storefront_description,
+      storefront_delivery,
+      storefront_payment_methods,
+      storefront_return_policy,
+      business_hours,
       location, 
       phone, 
       phoneVerified,
@@ -181,15 +206,44 @@ export async function PUT(request: NextRequest) {
       agriLinkVerificationRequestedAt,
       verificationStatus,
       verificationSubmittedAt,
-      specialties
+      specialties,
+      website,
+      facebook,
+      instagram,
+      whatsapp,
+      tiktok,
+      email
     } = body;
+    
+    // Debug: Log all body keys to see what's actually being sent
+    console.log('🔍 ALL BODY KEYS:', Object.keys(body));
+    console.log('🔍 storefront_delivery from body:', body.storefront_delivery);
+    console.log('🔍 storefront_payment_methods from body:', body.storefront_payment_methods);
+    console.log('🔍 storefront_return_policy from body:', body.storefront_return_policy);
     
     console.log('📥 Request body received:', {
       business_name,
       business_description,
       business_license_number,
-      allKeys: Object.keys(body)
+      storefront_description,
+      storefront_delivery,
+      storefront_delivery_type: typeof storefront_delivery,
+      storefront_delivery_undefined: storefront_delivery === undefined,
+      storefront_payment_methods,
+      storefront_payment_methods_type: typeof storefront_payment_methods,
+      storefront_payment_methods_undefined: storefront_payment_methods === undefined,
+      storefront_return_policy,
+      storefront_return_policy_type: typeof storefront_return_policy,
+      storefront_return_policy_undefined: storefront_return_policy === undefined,
+      allKeys: Object.keys(body),
+      body: JSON.stringify(body)
     });
+    
+    // Debug: Log all body keys to see what's actually being sent
+    console.log('🔍 ALL BODY KEYS:', Object.keys(body));
+    console.log('🔍 storefront_delivery from body:', body.storefront_delivery);
+    console.log('🔍 storefront_payment_methods from body:', body.storefront_payment_methods);
+    console.log('🔍 storefront_return_policy from body:', body.storefront_return_policy);
 
     // Update user profile images
     if (profileImage !== undefined || storefrontImage !== undefined) {
@@ -372,6 +426,375 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Update storefront description (using storefront_details table)
+    if (storefront_description !== undefined) {
+      console.log('🔄 Updating storefront description for user:', user.userId);
+      console.log('📝 Storefront description:', storefront_description);
+      
+      // Use raw SQL directly to avoid schema mismatches
+      try {
+        // Check if record exists
+        const existingCheck = await dbSql`
+          SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+        `;
+        
+        if (existingCheck.length > 0) {
+          // Update existing record
+          await dbSql`
+            UPDATE storefront_details 
+            SET description = ${storefront_description}
+            WHERE "userId" = ${user.userId}
+          `;
+          console.log('✅ Storefront description updated successfully');
+        } else {
+          // Insert new record - use simple INSERT without ON CONFLICT
+          await dbSql`
+            INSERT INTO storefront_details ("userId", description)
+            VALUES (${user.userId}, ${storefront_description})
+          `;
+          console.log('✅ Storefront description inserted successfully');
+        }
+      } catch (drizzleError: any) {
+        console.error('❌ Drizzle error, trying raw SQL fallback:', drizzleError);
+        console.error('❌ Drizzle error details:', {
+          message: drizzleError.message,
+          code: drizzleError.code,
+          stack: drizzleError.stack
+        });
+        // Fallback to raw SQL if Drizzle fails
+        try {
+          // First check if record exists
+          const existingCheck = await dbSql`
+            SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+          `;
+          
+          if (existingCheck.length > 0) {
+            // Update existing record
+            await dbSql`
+              UPDATE storefront_details 
+              SET description = ${storefront_description}
+              WHERE "userId" = ${user.userId}
+            `;
+            console.log('✅ Storefront description updated successfully (raw SQL)');
+          } else {
+            // Insert new record - generate UUID for id column
+            await dbSql`
+              INSERT INTO storefront_details (id, "userId", description)
+              VALUES (gen_random_uuid(), ${user.userId}, ${storefront_description})
+            `;
+            console.log('✅ Storefront description inserted successfully');
+          }
+        } catch (sqlError: any) {
+          console.error('❌ Raw SQL also failed:', sqlError);
+          console.error('❌ SQL error details:', {
+            message: sqlError.message,
+            code: sqlError.code,
+            stack: sqlError.stack
+          });
+          return NextResponse.json(
+            { 
+              error: 'Failed to update storefront description',
+              message: sqlError.message || drizzleError.message || 'Unknown error occurred',
+              details: sqlError.code || drizzleError.code || 'No error code',
+              drizzleError: drizzleError.message,
+              sqlError: sqlError.message,
+              hint: 'Check server terminal logs for detailed error information.'
+            },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Update storefront delivery policy (same pattern as description)
+    console.log('🔍 BEFORE CHECK - storefront_delivery:', {
+      value: storefront_delivery,
+      type: typeof storefront_delivery,
+      isUndefined: storefront_delivery === undefined,
+      isNull: storefront_delivery === null,
+      isEmpty: storefront_delivery === '',
+      checkResult: storefront_delivery !== undefined && storefront_delivery !== null && storefront_delivery !== ''
+    });
+    
+    if (storefront_delivery !== undefined && storefront_delivery !== null && storefront_delivery !== '') {
+      console.log('✅ PASSED CHECK - Updating storefront delivery for user:', user.userId);
+      console.log('📝 Storefront delivery:', storefront_delivery);
+      
+      try {
+        const existingCheck = await dbSql`
+          SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+        `;
+        
+        if (existingCheck.length > 0) {
+          await dbSql`
+            UPDATE storefront_details 
+            SET delivery = ${storefront_delivery}
+            WHERE "userId" = ${user.userId}
+          `;
+          console.log('✅ Storefront delivery updated successfully');
+          
+          // Verify the update
+          const verify = await dbSql`
+            SELECT delivery FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - delivery value in DB:', verify[0]?.delivery);
+        } else {
+          await dbSql`
+            INSERT INTO storefront_details ("userId", delivery)
+            VALUES (${user.userId}, ${storefront_delivery})
+          `;
+          console.log('✅ Storefront delivery inserted successfully');
+          
+          // Verify the insert
+          const verify = await dbSql`
+            SELECT delivery FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - delivery value in DB:', verify[0]?.delivery);
+        }
+      } catch (drizzleError: any) {
+        console.error('❌ Drizzle error, trying raw SQL fallback:', drizzleError);
+        try {
+          const existingCheck = await dbSql`
+            SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+          `;
+          
+          if (existingCheck.length > 0) {
+            await dbSql`
+              UPDATE storefront_details 
+              SET delivery = ${storefront_delivery}
+              WHERE "userId" = ${user.userId}
+            `;
+            console.log('✅ Storefront delivery updated successfully (raw SQL)');
+          } else {
+            await dbSql`
+              INSERT INTO storefront_details (id, "userId", delivery)
+              VALUES (gen_random_uuid(), ${user.userId}, ${storefront_delivery})
+            `;
+            console.log('✅ Storefront delivery inserted successfully');
+          }
+        } catch (sqlError: any) {
+          console.error('❌ Raw SQL also failed:', sqlError);
+          return NextResponse.json(
+            { 
+              error: 'Failed to update storefront delivery',
+              message: sqlError.message || drizzleError.message || 'Unknown error occurred'
+            },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Update storefront payment methods (same pattern as description)
+    if (storefront_payment_methods !== undefined && storefront_payment_methods !== null && storefront_payment_methods !== '') {
+      console.log('🔄 Updating storefront payment methods for user:', user.userId);
+      console.log('📝 Storefront payment methods:', storefront_payment_methods);
+      
+      try {
+        const existingCheck = await dbSql`
+          SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+        `;
+        
+        if (existingCheck.length > 0) {
+          await dbSql`
+            UPDATE storefront_details 
+            SET "paymentMethods" = ${storefront_payment_methods}
+            WHERE "userId" = ${user.userId}
+          `;
+          console.log('✅ Storefront payment methods updated successfully');
+          
+          // Verify the update
+          const verify = await dbSql`
+            SELECT "paymentMethods" FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - paymentMethods value in DB:', verify[0]?.paymentMethods);
+        } else {
+          await dbSql`
+            INSERT INTO storefront_details ("userId", "paymentMethods")
+            VALUES (${user.userId}, ${storefront_payment_methods})
+          `;
+          console.log('✅ Storefront payment methods inserted successfully');
+          
+          // Verify the insert
+          const verify = await dbSql`
+            SELECT "paymentMethods" FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - paymentMethods value in DB:', verify[0]?.paymentMethods);
+        }
+      } catch (drizzleError: any) {
+        console.error('❌ Drizzle error, trying raw SQL fallback:', drizzleError);
+        try {
+          const existingCheck = await dbSql`
+            SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+          `;
+          
+          if (existingCheck.length > 0) {
+            await dbSql`
+              UPDATE storefront_details 
+              SET "paymentMethods" = ${storefront_payment_methods}
+              WHERE "userId" = ${user.userId}
+            `;
+            console.log('✅ Storefront payment methods updated successfully (raw SQL)');
+          } else {
+            await dbSql`
+              INSERT INTO storefront_details (id, "userId", "paymentMethods")
+              VALUES (gen_random_uuid(), ${user.userId}, ${storefront_payment_methods})
+            `;
+            console.log('✅ Storefront payment methods inserted successfully');
+          }
+        } catch (sqlError: any) {
+          console.error('❌ Raw SQL also failed:', sqlError);
+          return NextResponse.json(
+            { 
+              error: 'Failed to update storefront payment methods',
+              message: sqlError.message || drizzleError.message || 'Unknown error occurred'
+            },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Update storefront return policy (same pattern as description)
+    if (storefront_return_policy !== undefined && storefront_return_policy !== null && storefront_return_policy !== '') {
+      console.log('🔄 Updating storefront return policy for user:', user.userId);
+      console.log('📝 Storefront return policy:', storefront_return_policy);
+      
+      try {
+        const existingCheck = await dbSql`
+          SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+        `;
+        
+        if (existingCheck.length > 0) {
+          await dbSql`
+            UPDATE storefront_details 
+            SET "returnPolicy" = ${storefront_return_policy}
+            WHERE "userId" = ${user.userId}
+          `;
+          console.log('✅ Storefront return policy updated successfully');
+          
+          // Verify the update
+          const verify = await dbSql`
+            SELECT "returnPolicy" FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - returnPolicy value in DB:', verify[0]?.returnPolicy);
+        } else {
+          await dbSql`
+            INSERT INTO storefront_details ("userId", "returnPolicy")
+            VALUES (${user.userId}, ${storefront_return_policy})
+          `;
+          console.log('✅ Storefront return policy inserted successfully');
+          
+          // Verify the insert
+          const verify = await dbSql`
+            SELECT "returnPolicy" FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - returnPolicy value in DB:', verify[0]?.returnPolicy);
+        }
+      } catch (drizzleError: any) {
+        console.error('❌ Drizzle error, trying raw SQL fallback:', drizzleError);
+        try {
+          const existingCheck = await dbSql`
+            SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+          `;
+          
+          if (existingCheck.length > 0) {
+            await dbSql`
+              UPDATE storefront_details 
+              SET "returnPolicy" = ${storefront_return_policy}
+              WHERE "userId" = ${user.userId}
+            `;
+            console.log('✅ Storefront return policy updated successfully (raw SQL)');
+          } else {
+            await dbSql`
+              INSERT INTO storefront_details (id, "userId", "returnPolicy")
+              VALUES (gen_random_uuid(), ${user.userId}, ${storefront_return_policy})
+            `;
+            console.log('✅ Storefront return policy inserted successfully');
+          }
+        } catch (sqlError: any) {
+          console.error('❌ Raw SQL also failed:', sqlError);
+          return NextResponse.json(
+            { 
+              error: 'Failed to update storefront return policy',
+              message: sqlError.message || drizzleError.message || 'Unknown error occurred'
+            },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Update storefront business hours (same pattern as other storefront fields)
+    if (business_hours !== undefined && business_hours !== null && business_hours !== '') {
+      console.log('🔄 Updating storefront business hours for user:', user.userId);
+      console.log('📝 Storefront business hours:', business_hours);
+      
+      try {
+        const existingCheck = await dbSql`
+          SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+        `;
+        
+        if (existingCheck.length > 0) {
+          await dbSql`
+            UPDATE storefront_details 
+            SET "businessHours" = ${business_hours}
+            WHERE "userId" = ${user.userId}
+          `;
+          console.log('✅ Storefront business hours updated successfully');
+          
+          // Verify the update
+          const verify = await dbSql`
+            SELECT "businessHours" FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - businessHours value in DB:', verify[0]?.businessHours);
+        } else {
+          await dbSql`
+            INSERT INTO storefront_details ("userId", "businessHours")
+            VALUES (${user.userId}, ${business_hours})
+          `;
+          console.log('✅ Storefront business hours inserted successfully');
+          
+          // Verify the insert
+          const verify = await dbSql`
+            SELECT "businessHours" FROM storefront_details WHERE "userId" = ${user.userId}
+          `;
+          console.log('🔍 Verification - businessHours value in DB:', verify[0]?.businessHours);
+        }
+      } catch (drizzleError: any) {
+        console.error('❌ Drizzle error, trying raw SQL fallback:', drizzleError);
+        try {
+          const existingCheck = await dbSql`
+            SELECT "userId" FROM storefront_details WHERE "userId" = ${user.userId} LIMIT 1
+          `;
+          
+          if (existingCheck.length > 0) {
+            await dbSql`
+              UPDATE storefront_details 
+              SET "businessHours" = ${business_hours}
+              WHERE "userId" = ${user.userId}
+            `;
+            console.log('✅ Storefront business hours updated successfully (raw SQL)');
+          } else {
+            await dbSql`
+              INSERT INTO storefront_details (id, "userId", "businessHours")
+              VALUES (gen_random_uuid(), ${user.userId}, ${business_hours})
+            `;
+            console.log('✅ Storefront business hours inserted successfully');
+          }
+        } catch (sqlError: any) {
+          console.error('❌ Raw SQL also failed:', sqlError);
+          return NextResponse.json(
+            { 
+              error: 'Failed to update storefront business hours',
+              message: sqlError.message || drizzleError.message || 'Unknown error occurred'
+            },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
     // Update specialties
     if (specialties !== undefined) {
       console.log('🔧 Updating user specialties:', {
@@ -438,7 +861,9 @@ export async function PUT(request: NextRequest) {
         business_name,
         business_description,
         business_license_number,
-        "userId": user.userId
+        "userId": user.userId,
+        "business_description_type": typeof business_description,
+        "business_description_length": business_description?.length
       });
       
       try {
@@ -448,24 +873,45 @@ export async function PUT(request: NextRequest) {
         `;
         
         if (existingRecord.length > 0) {
-          // Update existing record
-          await dbSql`
-            UPDATE business_details 
-            SET 
-              "businessName" = COALESCE(${business_name}, "businessName"),
-              "businessDescription" = COALESCE(${business_description}, "businessDescription"),
-              "businessLicenseNumber" = COALESCE(${business_license_number}, "businessLicenseNumber"),
-              "updatedAt" = NOW()
-            WHERE "userId" = ${user.userId}
-          `;
-          console.log('✅ Business details updated successfully');
+          // Update existing record using Drizzle ORM
+          const updateData: any = {
+            updatedAt: new Date()
+          };
+          
+          if (business_name !== undefined) {
+            updateData.businessName = business_name;
+          }
+          if (business_description !== undefined) {
+            updateData.businessDescription = business_description;
+            console.log('📝 Setting businessDescription to:', business_description);
+          }
+          if (business_license_number !== undefined) {
+            updateData.businessLicenseNumber = business_license_number;
+          }
+          
+          console.log('🔧 Updating business_details with:', updateData);
+          await db
+            .update(businessDetails)
+            .set(updateData)
+            .where(eq(businessDetails.userId, user.userId));
+          
+          // Verify the update
+          const verifyResult = await db
+            .select({ businessDescription: businessDetails.businessDescription })
+            .from(businessDetails)
+            .where(eq(businessDetails.userId, user.userId))
+            .limit(1);
+          
+          console.log('✅ Business details updated. Verified value:', verifyResult[0]?.businessDescription);
         } else {
           // Insert new record
           await dbSql`
             INSERT INTO business_details ("userId", "businessName", "businessDescription", "businessLicenseNumber", "updatedAt")
-            VALUES (${user.userId}, ${business_name}, ${business_description}, ${business_license_number}, NOW())
+            VALUES (${user.userId}, ${business_name || null}, ${business_description || null}, ${business_license_number || null}, NOW())
           `;
-          console.log('✅ Business details inserted successfully');
+          console.log('✅ Business details inserted successfully:', {
+            businessDescription: business_description
+          });
         }
       } catch (dbError: any) {
         console.error('❌ Database error updating business details:', dbError);
@@ -542,6 +988,110 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Update website and social media links
+    if (website !== undefined || facebook !== undefined || instagram !== undefined || whatsapp !== undefined || tiktok !== undefined) {
+      console.log('🔄 Updating user social media links for user:', user.userId);
+      
+      try {
+        // Check if user_social record exists
+        const existingSocial = await db
+          .select({ userId: userSocial.userId })
+          .from(userSocial)
+          .where(eq(userSocial.userId, user.userId))
+          .limit(1);
+        
+        const socialUpdates: any = {};
+        if (website !== undefined) socialUpdates.website = (website && website.trim()) || null;
+        if (facebook !== undefined) socialUpdates.facebook = (facebook && facebook.trim()) || null;
+        if (instagram !== undefined) socialUpdates.instagram = (instagram && instagram.trim()) || null;
+        if (whatsapp !== undefined) socialUpdates.whatsapp = (whatsapp && whatsapp.trim()) || null;
+        if (tiktok !== undefined) socialUpdates.tiktok = (tiktok && tiktok.trim()) || null;
+        
+        console.log('🔍 Social updates to save:', socialUpdates);
+        
+        if (existingSocial.length > 0) {
+          // Update existing record
+          await db
+            .update(userSocial)
+            .set(socialUpdates)
+            .where(eq(userSocial.userId, user.userId));
+          console.log('✅ User social media links updated successfully');
+        } else {
+          // Insert new record
+          await db
+            .insert(userSocial)
+            .values({
+              userId: user.userId,
+              ...socialUpdates
+            });
+          console.log('✅ User social media links inserted successfully');
+        }
+      } catch (error: any) {
+        console.error('❌ Error updating user social media links:', error);
+        // Don't fail the entire request if social update fails
+      }
+    }
+
+    // Update phone in user_profiles if provided
+    if (phone !== undefined) {
+      console.log('🔄 Updating phone for user:', user.userId);
+      try {
+        const existingProfile = await db
+          .select({ userId: userProfiles.userId })
+          .from(userProfiles)
+          .where(eq(userProfiles.userId, user.userId))
+          .limit(1);
+        
+        if (existingProfile.length > 0) {
+          await db
+            .update(userProfiles)
+            .set({ phone: phone || null })
+            .where(eq(userProfiles.userId, user.userId));
+          console.log('✅ Phone updated successfully');
+        } else {
+          await db
+            .insert(userProfiles)
+            .values({
+              userId: user.userId,
+              phone: phone || null
+            });
+          console.log('✅ Phone inserted successfully');
+        }
+      } catch (error: any) {
+        console.error('❌ Error updating phone:', error);
+      }
+    }
+
+    // Update website in user_profiles if provided (for backward compatibility)
+    if (website !== undefined) {
+      console.log('🔄 Updating website in user_profiles for user:', user.userId);
+      try {
+        const existingProfile = await db
+          .select({ userId: userProfiles.userId })
+          .from(userProfiles)
+          .where(eq(userProfiles.userId, user.userId))
+          .limit(1);
+        
+        if (existingProfile.length > 0) {
+          await db
+            .update(userProfiles)
+            .set({ website: website || null })
+            .where(eq(userProfiles.userId, user.userId));
+          console.log('✅ Website updated in user_profiles successfully');
+        } else {
+          await db
+            .insert(userProfiles)
+            .values({
+              userId: user.userId,
+              website: website || null
+            });
+          console.log('✅ Website inserted in user_profiles successfully');
+        }
+      } catch (error: any) {
+        console.error('❌ Error updating website in user_profiles:', error);
+      }
+    }
+
     // Update verification status if provided
     if (verificationStatus !== undefined || agriLinkVerificationRequested !== undefined || business_details_completed !== undefined) {
       console.log('🔄 Updating user verification status...');
@@ -570,21 +1120,55 @@ export async function PUT(request: NextRequest) {
 
 
     // Get updated user profile using normalized structure
-    const [updatedProfile] = await dbSql`
-      SELECT 
-        u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
-        bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
-        l.city, l.region, up.phone, up."profileImage", up."storefrontImage",
-        uv.verified, uv."phoneVerified", uv."verificationStatus", uv."verificationDocuments", uv."rejectedDocuments", uv."businessDetailsCompleted",
-        ur.rating, ur."totalReviews"
-      FROM users u
-      LEFT JOIN user_profiles up ON u.id = up."userId"
-      LEFT JOIN locations l ON up."locationId" = l.id
-      LEFT JOIN user_verification uv ON u.id = uv."userId"
-      LEFT JOIN user_ratings ur ON u.id = ur."userId"
-      LEFT JOIN business_details bd ON u.id = bd."userId"
-      WHERE u.id = ${user.userId}
-    `;
+    // Note: storefrontDescription column may not exist yet if migration hasn't been applied
+    let updatedProfile;
+    try {
+      [updatedProfile] = await dbSql`
+        SELECT 
+          u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
+          bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
+          l.city, l.region, up.phone, up."profileImage", up."storefrontImage", up.website as "profileWebsite",
+          sd.description as "storefrontDescription",
+          sd.delivery as "storefrontDelivery",
+          sd."paymentMethods" as "storefrontPaymentMethods",
+          sd."returnPolicy" as "storefrontReturnPolicy",
+          us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+          uv.verified, uv."phoneVerified", uv."verificationStatus", uv."verificationDocuments", uv."rejectedDocuments", uv."businessDetailsCompleted",
+          ur.rating, ur."totalReviews"
+        FROM users u
+        LEFT JOIN user_profiles up ON u.id = up."userId"
+        LEFT JOIN locations l ON up."locationId" = l.id
+        LEFT JOIN user_verification uv ON u.id = uv."userId"
+        LEFT JOIN user_ratings ur ON u.id = ur."userId"
+        LEFT JOIN business_details bd ON u.id = bd."userId"
+        LEFT JOIN storefront_details sd ON u.id = sd."userId"
+        LEFT JOIN user_social us ON u.id = us."userId"
+        WHERE u.id = ${user.userId}
+      `;
+    } catch (dbError: any) {
+      // If storefrontDescription column doesn't exist yet, query without it
+      if (dbError.message && dbError.message.includes('storefrontDescription')) {
+        console.log('⚠️ storefrontDescription column not found, querying without it');
+        [updatedProfile] = await dbSql`
+          SELECT 
+            u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
+            bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
+            l.city, l.region, up.phone, up."profileImage", up."storefrontImage", 
+            NULL as "storefrontDescription",
+            uv.verified, uv."phoneVerified", uv."verificationStatus", uv."verificationDocuments", uv."rejectedDocuments", uv."businessDetailsCompleted",
+            ur.rating, ur."totalReviews"
+          FROM users u
+          LEFT JOIN user_profiles up ON u.id = up."userId"
+          LEFT JOIN locations l ON up."locationId" = l.id
+          LEFT JOIN user_verification uv ON u.id = uv."userId"
+          LEFT JOIN user_ratings ur ON u.id = ur."userId"
+          LEFT JOIN business_details bd ON u.id = bd."userId"
+          WHERE u.id = ${user.userId}
+        `;
+      } else {
+        throw dbError;
+      }
+    }
 
     // updatedProfile is already destructured from the query above
     
@@ -623,13 +1207,22 @@ export async function PUT(request: NextRequest) {
         phone: updatedProfile.phone,
         profileImage: updatedProfile.profileImage,
         storefrontImage: updatedProfile.storefrontImage,
+        storefrontDescription: updatedProfile.storefrontDescription,
+        storefrontDelivery: updatedProfile.storefrontDelivery,
+        storefrontPaymentMethods: updatedProfile.storefrontPaymentMethods,
+        storefrontReturnPolicy: updatedProfile.storefrontReturnPolicy,
         verified: updatedProfile.verified,
         phoneVerified: updatedProfile.phoneVerified,
         businessName: updatedProfile.businessName,
         businessDescription: updatedProfile.businessDescription,
         businessLicenseNumber: updatedProfile.businessLicenseNumber,
         verificationDocuments: updatedProfile.verificationDocuments,
-        verificationStatus: updatedProfile.verificationStatus
+        verificationStatus: updatedProfile.verificationStatus,
+        website: updatedProfile.socialWebsite || updatedProfile.profileWebsite || null,
+        facebook: updatedProfile.facebook || null,
+        instagram: updatedProfile.instagram || null,
+        whatsapp: updatedProfile.whatsapp || null,
+        tiktok: updatedProfile.tiktok || null
       },
       message: 'Profile updated successfully'
     };
@@ -657,6 +1250,7 @@ export async function PUT(request: NextRequest) {
         phone: updatedProfile.phone,
         profileImage: updatedProfile.profileImage,
         storefrontImage: updatedProfile.storefrontImage,
+        storefrontDescription: updatedProfile.storefrontDescription,
         verified: updatedProfile.verified,
         phoneVerified: updatedProfile.phoneVerified,
         businessName: updatedProfile.businessName,
@@ -670,7 +1264,12 @@ export async function PUT(request: NextRequest) {
         totalReviews: updatedProfile.totalReviews || 0,
         joinedDate: updatedProfile.createdAt,
         pendingEmail: updatedProfile.pendingEmail,
-        specialties: updatedProfile.specialties
+        specialties: updatedProfile.specialties,
+        website: updatedProfile.socialWebsite || updatedProfile.profileWebsite || null,
+        facebook: updatedProfile.facebook || null,
+        instagram: updatedProfile.instagram || null,
+        whatsapp: updatedProfile.whatsapp || null,
+        tiktok: updatedProfile.tiktok || null
       },
       message: 'Profile updated successfully'
     });

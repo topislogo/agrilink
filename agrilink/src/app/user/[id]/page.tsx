@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { UserProfile } from "@/components/UserProfile";
 import { SellerStorefront } from "@/components/SellerStorefront";
 import { ChatInterface } from "@/components/ChatInterface";
+import { updateStorefront } from "@/lib/storefront-utils";
 
 interface UserProfileData {
   id: string;
@@ -77,9 +78,20 @@ export default function UserProfilePage() {
 
   const loadUserProfile = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch(`/api/user/${userId}/public`);
       if (response.ok) {
         const data = await response.json();
+        console.log('📥 Loaded user profile:', {
+          businessDescription: data.user.businessDescription,
+          description: data.user.description,
+          website: data.user.website,
+          facebook: data.user.facebook,
+          instagram: data.user.instagram,
+          whatsapp: data.user.whatsapp,
+          tiktok: data.user.tiktok,
+          allKeys: Object.keys(data.user || {})
+        });
         setUserProfile(data.user);
         
         // For sellers, also load their products
@@ -91,6 +103,10 @@ export default function UserProfilePage() {
               ...data.user, 
               products: productsData.products || []
             };
+            console.log('📥 Merged user profile with products:', {
+              businessDescription: mergedData.businessDescription,
+              description: mergedData.description
+            });
             setUserProfile(mergedData);
           }
         }
@@ -197,16 +213,24 @@ export default function UserProfilePage() {
             type: userProfile.userType as "farmer" | "trader",
             accountType: userProfile.accountType,
             location: userProfile.location || '',
-            description: (userProfile as any).description || '',
+            description: (userProfile as any).storefrontDescription || (userProfile as any).businessDescription || '',
+            storefrontDelivery: (userProfile as any).storefrontDelivery || '',
+            storefrontPaymentMethods: (userProfile as any).storefrontPaymentMethods || '',
+            storefrontReturnPolicy: (userProfile as any).storefrontReturnPolicy || '',
             image: userProfile.profileImage || '',
             storefrontImage: userProfile.storefrontImage || '',
             rating: userProfile.ratings?.rating || 0,
             totalReviews: userProfile.ratings?.totalReviews || 0,
             yearsActive: 0,
             responseTime: userProfile.ratings?.responseTime || '',
-            certifications: userProfile.ratings?.qualityCertifications || [],
             joinedDate: userProfile.joinedDate,
-            verified: userProfile.verification?.verified || false
+            verified: userProfile.verification?.verified || false,
+            phone: (userProfile as any).phone || '',
+            website: (userProfile as any).website || '',
+            facebook: (userProfile as any).facebook || '',
+            instagram: (userProfile as any).instagram || '',
+            whatsapp: (userProfile as any).whatsapp || '',
+            tiktok: (userProfile as any).tiktok || ''
           }}
           products={userProfile.products || []}
           onBack={() => router.push("/")}
@@ -219,8 +243,33 @@ export default function UserProfilePage() {
             console.log('Edit storefront image');
           }}
           onUpdateStorefront={async (updates) => {
-            // TODO: Implement storefront updates
-            console.log('Update storefront:', updates);
+            try {
+              const responseData = await updateStorefront(updates, async () => {
+                // Wait a bit to ensure database commit completes
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await loadUserProfile();
+              });
+
+              // Update userProfile immediately with the response data if available
+              if (responseData?.user) {
+                setUserProfile((prev: any) => ({
+                  ...prev,
+                  storefrontDescription: responseData.user.storefrontDescription,
+                  storefrontDelivery: responseData.user.storefrontDelivery,
+                  storefrontPaymentMethods: responseData.user.storefrontPaymentMethods,
+                  storefrontReturnPolicy: responseData.user.storefrontReturnPolicy,
+                  storefrontBusinessHours: responseData.user.storefrontBusinessHours,
+                  website: responseData.user.website,
+                  facebook: responseData.user.facebook,
+                  instagram: responseData.user.instagram,
+                  whatsapp: responseData.user.whatsapp,
+                  tiktok: responseData.user.tiktok
+                }));
+              }
+            } catch (error: any) {
+              console.error('❌ Error updating storefront:', error);
+              throw error;
+            }
           }}
           previewMode={false}
           onTogglePreviewMode={(mode) => {

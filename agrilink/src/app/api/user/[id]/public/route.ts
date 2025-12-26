@@ -16,38 +16,106 @@ export async function GET(
     const isEmail = identifier.includes('@');
     
     // Get user information with complete profile data from core tables
+    // Note: storefrontDescription column may not exist yet if migration hasn't been applied
     let userData;
-    if (isEmail) {
-      userData = await sql`
-        SELECT 
-          u.id, u.name, u.email, u."createdAt" as "joinedDate",
-          u."userType", u."accountType",
-          l.city as location, l.region, up."profileImage", up."storefrontImage", up.phone, up.website,
-          uv.verified, uv."phoneVerified", uv."verificationStatus", 
-          bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
-        FROM users u
-        LEFT JOIN user_profiles up ON u.id = up."userId"
-        LEFT JOIN locations l ON up."locationId" = l.id
-        LEFT JOIN user_verification uv ON u.id = uv."userId"
-        LEFT JOIN business_details bd ON u.id = bd."userId"
-        WHERE u.email = ${identifier}
-        LIMIT 1
-      `;
-    } else {
-      userData = await sql`
-        SELECT 
-          u.id, u.name, u.email, u."userType", u."accountType", u."createdAt" as "joinedDate",
-          l.city as location, l.region, up."profileImage", up."storefrontImage", up.phone, up.website,
-          uv.verified, uv."phoneVerified", uv."verificationStatus", 
-          bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
-        FROM users u
-        LEFT JOIN user_profiles up ON u.id = up."userId"
-        LEFT JOIN locations l ON up."locationId" = l.id
-        LEFT JOIN user_verification uv ON u.id = uv."userId"
-        LEFT JOIN business_details bd ON u.id = bd."userId"
-        WHERE u.id = ${identifier}
-        LIMIT 1
-      `;
+    try {
+      if (isEmail) {
+        userData = await sql`
+          SELECT 
+            u.id, u.name, u.email, u."createdAt" as "joinedDate",
+            u."userType", u."accountType",
+            l.city as location, l.region, up."profileImage", up."storefrontImage", 
+            sd.description as "storefrontDescription",
+            sd.delivery as "storefrontDelivery",
+            sd."paymentMethods" as "storefrontPaymentMethods",
+            sd."returnPolicy" as "storefrontReturnPolicy",
+            sd."businessHours" as "storefrontBusinessHours",
+            up.phone, up.website as "profileWebsite",
+            us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+            uv.verified, uv."phoneVerified", uv."verificationStatus", 
+            bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+          FROM users u
+          LEFT JOIN user_profiles up ON u.id = up."userId"
+          LEFT JOIN locations l ON up."locationId" = l.id
+          LEFT JOIN user_verification uv ON u.id = uv."userId"
+          LEFT JOIN business_details bd ON u.id = bd."userId"
+          LEFT JOIN storefront_details sd ON u.id = sd."userId"
+          LEFT JOIN user_social us ON u.id = us."userId"
+          WHERE u.email = ${identifier}
+          LIMIT 1
+        `;
+      } else {
+        userData = await sql`
+          SELECT 
+            u.id, u.name, u.email, u."userType", u."accountType", u."createdAt" as "joinedDate",
+            l.city as location, l.region, up."profileImage", up."storefrontImage", 
+            sd.description as "storefrontDescription",
+            sd.delivery as "storefrontDelivery",
+            sd."paymentMethods" as "storefrontPaymentMethods",
+            sd."returnPolicy" as "storefrontReturnPolicy",
+            sd."businessHours" as "storefrontBusinessHours",
+            up.phone, up.website as "profileWebsite",
+            us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+            uv.verified, uv."phoneVerified", uv."verificationStatus", 
+            bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+          FROM users u
+          LEFT JOIN user_profiles up ON u.id = up."userId"
+          LEFT JOIN locations l ON up."locationId" = l.id
+          LEFT JOIN user_verification uv ON u.id = uv."userId"
+          LEFT JOIN business_details bd ON u.id = bd."userId"
+          LEFT JOIN storefront_details sd ON u.id = sd."userId"
+          LEFT JOIN user_social us ON u.id = us."userId"
+          WHERE u.id = ${identifier}
+          LIMIT 1
+        `;
+      }
+    } catch (dbError: any) {
+      // If storefrontDescription column doesn't exist yet, query without it
+      if (dbError.message && dbError.message.includes('storefrontDescription')) {
+        console.log('⚠️ storefrontDescription column not found, querying without it');
+        if (isEmail) {
+          userData = await sql`
+            SELECT 
+              u.id, u.name, u.email, u."createdAt" as "joinedDate",
+              u."userType", u."accountType",
+              l.city as location, l.region, up."profileImage", up."storefrontImage", 
+              NULL as "storefrontDescription",
+              up.phone, up.website as "profileWebsite",
+              us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+              uv.verified, uv."phoneVerified", uv."verificationStatus", 
+              bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up."userId"
+            LEFT JOIN locations l ON up."locationId" = l.id
+            LEFT JOIN user_verification uv ON u.id = uv."userId"
+            LEFT JOIN business_details bd ON u.id = bd."userId"
+            LEFT JOIN user_social us ON u.id = us."userId"
+            WHERE u.email = ${identifier}
+            LIMIT 1
+          `;
+        } else {
+          userData = await sql`
+            SELECT 
+              u.id, u.name, u.email, u."userType", u."accountType", u."createdAt" as "joinedDate",
+              l.city as location, l.region, up."profileImage", up."storefrontImage", 
+              NULL as "storefrontDescription",
+              up.phone, up.website as "profileWebsite",
+              us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+              uv.verified, uv."phoneVerified", uv."verificationStatus", 
+              bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up."userId"
+            LEFT JOIN locations l ON up."locationId" = l.id
+            LEFT JOIN user_verification uv ON u.id = uv."userId"
+            LEFT JOIN business_details bd ON u.id = bd."userId"
+            LEFT JOIN user_social us ON u.id = us."userId"
+            WHERE u.id = ${identifier}
+            LIMIT 1
+          `;
+        }
+      } else {
+        throw dbError;
+      }
     }
 
     if (userData.length === 0) {
@@ -149,15 +217,27 @@ export async function GET(
       location: user.location,
       profileImage: user.profileImage,
       storefrontImage: user.storefrontImage,
+      storefrontDescription: user.storefrontDescription, // Customer-facing storefront description
+      storefrontDelivery: user.storefrontDelivery,
+      storefrontPaymentMethods: user.storefrontPaymentMethods,
+      storefrontReturnPolicy: user.storefrontReturnPolicy,
       phone: user.phone,
-      website: user.website,
+      website: user.socialWebsite || user.profileWebsite || user.website || null,
+      facebook: user.facebook || null,
+      instagram: user.instagram || null,
+      whatsapp: user.whatsapp || null,
+      tiktok: user.tiktok || null,
       
-      // Business info (for business accounts)
+      // Business info (for business accounts) - from verification
       businessName: user.businessName,
-      businessDescription: user.businessDescription,
-      businessHours: null,
+      businessDescription: user.businessDescription, // Official business description from verification
+      businessHours: user.storefrontBusinessHours || null, // From storefront_details (customer-facing)
       specialties: user.specialties,
-      policies: null,
+      policies: {
+        delivery: user.storefrontDelivery || '',
+        payment: user.storefrontPaymentMethods || '',
+        returns: user.storefrontReturnPolicy || ''
+      },
       
       // Social media (placeholder)
       social: {

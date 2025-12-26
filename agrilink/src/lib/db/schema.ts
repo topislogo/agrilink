@@ -91,6 +91,7 @@ export const userProfiles = pgTable('user_profiles', {
   phone: text('phone'),
   profileImage: text('profileImage'),
   storefrontImage: text('storefrontImage'),
+  storefrontDescription: text('storefrontDescription'), // Customer-facing storefront description (separate from businessDescription)
   website: text('website'),
   specialties: text('specialties').array(), // Array of specialties
   createdAt: timestamp('createdAt', { withTimezone: true }),
@@ -158,6 +159,23 @@ export const businessDetails = pgTable('business_details', {
   policies: jsonb('policies'),
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
+}, (table) => ({
+  uniqueUserId: unique().on(table.userId),
+}));
+
+// Storefront details table - Customer-facing storefront information
+// Note: This table exists in the database with: id, userId, delivery, paymentMethods, returnPolicy
+// We need to add: description, createdAt, updatedAt via migration
+export const storefrontDetails = pgTable('storefront_details', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  description: text('description'), // Storefront description (separate from businessDescription) - needs migration
+  delivery: text('delivery'), // Delivery policy
+  paymentMethods: text('paymentMethods'), // Payment methods
+  returnPolicy: text('returnPolicy'), // Return policy
+  businessHours: text('businessHours'), // Business hours (moved from business_details)
+  createdAt: timestamp('createdAt', { withTimezone: true }), // needs migration
+  updatedAt: timestamp('updatedAt', { withTimezone: true }), // needs migration
 }, (table) => ({
   uniqueUserId: unique().on(table.userId),
 }));
@@ -439,6 +457,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   savedProducts: many(savedProducts),
   customDeliveryOptions: many(sellerCustomDeliveryOptions),
   customPaymentTerms: many(sellerCustomPaymentTerms),
+  storefrontDetails: one(storefrontDetails, { fields: [users.id], references: [storefrontDetails.userId] }),
 }));
 
 export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
@@ -461,6 +480,10 @@ export const userVerificationRelations = relations(userVerification, ({ one }) =
 
 export const businessDetailsRelations = relations(businessDetails, ({ one, many }) => ({
   user: one(users, { fields: [businessDetails.userId], references: [users.id] }),
+}));
+
+export const storefrontDetailsRelations = relations(storefrontDetails, ({ one }) => ({
+  user: one(users, { fields: [storefrontDetails.userId], references: [users.id] }),
 }));
 
 export const emailManagementRelations = relations(emailManagement, ({ one }) => ({
@@ -556,6 +579,9 @@ export type NewUserVerification = typeof userVerification.$inferInsert;
 
 export type BusinessDetails = typeof businessDetails.$inferSelect;
 export type NewBusinessDetails = typeof businessDetails.$inferInsert;
+
+export type StorefrontDetails = typeof storefrontDetails.$inferSelect;
+export type NewStorefrontDetails = typeof storefrontDetails.$inferInsert;
 
 export type EmailManagement = typeof emailManagement.$inferSelect;
 export type NewEmailManagement = typeof emailManagement.$inferInsert;
