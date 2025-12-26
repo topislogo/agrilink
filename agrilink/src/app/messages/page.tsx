@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 // Helper function to get verification level for other party (public view only)
-function getOtherPartyVerificationLevel(otherParty: any): string {
+function getOtherPartyVerificationLevel(otherParty: any): "unverified" | "business-verified" | "id-verified" | "under-review" {
   // Only consider fully verified users (not just phone verified)
   const isVerified = otherParty.verified;
   
@@ -51,6 +51,7 @@ interface Conversation {
     id: string;
     name: string;
     type: 'farmer' | 'trader' | 'buyer';
+    accountType: 'individual' | 'business';
     location: string;
     rating: number;
     verified: boolean;
@@ -236,7 +237,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Search and Filters */}
-        <Card>
+        <Card className="mb-4">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Search */}
@@ -314,7 +315,7 @@ export default function MessagesPage() {
                 <CardContent className="p-4">
                   <div className="flex gap-4">
                     {/* Profile Image */}
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <S3Image 
                         src={conversation.otherParty.profileImage || '/api/placeholder/400/300'}
                         alt={conversation.otherParty.name}

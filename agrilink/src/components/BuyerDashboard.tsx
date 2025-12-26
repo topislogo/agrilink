@@ -405,7 +405,11 @@ export function BuyerDashboard({
                   <Button 
                     size="sm"
                     className="w-full md:w-auto"
-                    onClick={() => saved.product && onStartChat(saved.productId, (saved.product as any).sellerId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      saved.product && onStartChat(saved.productId, saved.product.seller.id)
+                    }
+                    }
                     disabled={!saved.product}
                   >
                     <MessageCircle className="w-4 h-4 mr-1" />
