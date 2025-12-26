@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AppHeader } from "@/components/AppHeader";
 import { SellerStorefront } from "@/components/SellerStorefront";
 import { ChatInterface } from "@/components/ChatInterface";
+import { updateStorefront } from "@/lib/storefront-utils";
 import { toast, Toaster } from "sonner";
 
 export default function SellerStorefrontPage() {
@@ -161,87 +162,35 @@ export default function SellerStorefrontPage() {
     input.click();
   };
 
-  // Handle storefront updates
-  const handleUpdateStorefront = async (updates: any, fieldEdit: string) => {
+  // Handle storefront updates - use the shared updateStorefront utility
+  const handleUpdateStorefront = async (updates: any) => {
     try {
-      const token = localStorage.getItem('token');
-      if (fieldEdit === 'socialmedia') {
-        const response = await fetch(`/api/user/${sellerId}/social`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updates)
-        });
+      const responseData = await updateStorefront(updates, async () => {
+        // Wait a bit to ensure database commit completes
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await loadSellerData();
+      });
 
-        if (response.ok) {
-          const updatedUser = await response.json();
-          setSeller((prev: any) => ({
-            ...prev,
-            ...updates
-          }));
-          await loadSellerData();
-          toast.success("Profile updated successfully!");
-        } else {
-          const error = await response.json();
-          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
-        }
-      } else if (fieldEdit === 'profile') {
-        const response = await fetch(`/api/user/${sellerId}/profile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(updates),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update storefront');
-        }
-
-        // Update local state
+      // Update seller state immediately with the response data if available
+      if (responseData?.user) {
         setSeller((prev: any) => ({
           ...prev,
-          ...updates
+          storefrontDescription: responseData.user.storefrontDescription,
+          storefrontDelivery: responseData.user.storefrontDelivery,
+          storefrontPaymentMethods: responseData.user.storefrontPaymentMethods,
+          storefrontReturnPolicy: responseData.user.storefrontReturnPolicy,
+          storefrontBusinessHours: responseData.user.storefrontBusinessHours,
+          website: responseData.user.website,
+          facebook: responseData.user.facebook,
+          instagram: responseData.user.instagram,
+          whatsapp: responseData.user.whatsapp,
+          tiktok: responseData.user.tiktok
         }));
-
-        // Refresh seller data to get latest changes
-        await loadSellerData();
-        toast.success("Profile updated successfully!");
-      } else if (fieldEdit === 'business_details') {
-        const updateKey = Object.keys(updates)[0];
-        if (['returns', 'delivery', 'payment'].includes(updateKey)) {
-          updates = { policies: { ...updates } };
-        }
-
-        const response = await fetch(`/api/user/${sellerId}/business_details`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updates)
-        });
-
-        if (response.ok) {
-          const updatedUser = await response.json();
-          // Update local state
-          setSeller((prev: any) => ({
-            ...prev,
-            ...updates
-          }));
-          await loadSellerData();
-          
-          toast.success("Profile updated successfully!");
-        } else {
-          const error = await response.json();
-          toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
-        }
       }
-    } catch (error) {
-      console.error('Failed to update storefront:', error);
+      toast.success('Storefront updated successfully!');
+    } catch (error: any) {
+      console.error('❌ Error updating storefront:', error);
+      toast.error(`Failed to update storefront: ${error.message || "Unknown error"}`);
       throw error;
     }
   };

@@ -33,7 +33,7 @@ export interface UpdateStorefrontOptions {
 export async function updateStorefront(
   updates: StorefrontUpdates,
   reloadCallback?: () => Promise<void>
-): Promise<void> {
+): Promise<any> {
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('No authentication token found');

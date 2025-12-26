@@ -442,15 +442,15 @@ export async function PUT(request: NextRequest) {
           // Update existing record
           await dbSql`
             UPDATE storefront_details 
-            SET description = ${storefront_description}
+            SET description = ${storefront_description}, "updatedAt" = now()
             WHERE "userId" = ${user.userId}
           `;
           console.log('✅ Storefront description updated successfully');
         } else {
-          // Insert new record - use simple INSERT without ON CONFLICT
+          // Insert new record - generate UUID for id column
           await dbSql`
-            INSERT INTO storefront_details ("userId", description)
-            VALUES (${user.userId}, ${storefront_description})
+            INSERT INTO storefront_details (id, "userId", description)
+            VALUES (gen_random_uuid(), ${user.userId}, ${storefront_description})
           `;
           console.log('✅ Storefront description inserted successfully');
         }
@@ -540,8 +540,8 @@ export async function PUT(request: NextRequest) {
           console.log('🔍 Verification - delivery value in DB:', verify[0]?.delivery);
         } else {
           await dbSql`
-            INSERT INTO storefront_details ("userId", delivery)
-            VALUES (${user.userId}, ${storefront_delivery})
+            INSERT INTO storefront_details (id, "userId", delivery)
+            VALUES (gen_random_uuid(), ${user.userId}, ${storefront_delivery})
           `;
           console.log('✅ Storefront delivery inserted successfully');
           
@@ -610,8 +610,8 @@ export async function PUT(request: NextRequest) {
           console.log('🔍 Verification - paymentMethods value in DB:', verify[0]?.paymentMethods);
         } else {
           await dbSql`
-            INSERT INTO storefront_details ("userId", "paymentMethods")
-            VALUES (${user.userId}, ${storefront_payment_methods})
+            INSERT INTO storefront_details (id, "userId", "paymentMethods")
+            VALUES (gen_random_uuid(), ${user.userId}, ${storefront_payment_methods})
           `;
           console.log('✅ Storefront payment methods inserted successfully');
           
@@ -680,8 +680,8 @@ export async function PUT(request: NextRequest) {
           console.log('🔍 Verification - returnPolicy value in DB:', verify[0]?.returnPolicy);
         } else {
           await dbSql`
-            INSERT INTO storefront_details ("userId", "returnPolicy")
-            VALUES (${user.userId}, ${storefront_return_policy})
+            INSERT INTO storefront_details (id, "userId", "returnPolicy")
+            VALUES (gen_random_uuid(), ${user.userId}, ${storefront_return_policy})
           `;
           console.log('✅ Storefront return policy inserted successfully');
           
@@ -750,8 +750,8 @@ export async function PUT(request: NextRequest) {
           console.log('🔍 Verification - businessHours value in DB:', verify[0]?.businessHours);
         } else {
           await dbSql`
-            INSERT INTO storefront_details ("userId", "businessHours")
-            VALUES (${user.userId}, ${business_hours})
+            INSERT INTO storefront_details (id, "userId", "businessHours")
+            VALUES (gen_random_uuid(), ${user.userId}, ${business_hours})
           `;
           console.log('✅ Storefront business hours inserted successfully');
           
@@ -1132,6 +1132,7 @@ export async function PUT(request: NextRequest) {
           sd.delivery as "storefrontDelivery",
           sd."paymentMethods" as "storefrontPaymentMethods",
           sd."returnPolicy" as "storefrontReturnPolicy",
+          sd."businessHours" as "storefrontBusinessHours",
           us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
           uv.verified, uv."phoneVerified", uv."verificationStatus", uv."verificationDocuments", uv."rejectedDocuments", uv."businessDetailsCompleted",
           ur.rating, ur."totalReviews"
@@ -1251,6 +1252,10 @@ export async function PUT(request: NextRequest) {
         profileImage: updatedProfile.profileImage,
         storefrontImage: updatedProfile.storefrontImage,
         storefrontDescription: updatedProfile.storefrontDescription,
+        storefrontDelivery: updatedProfile.storefrontDelivery,
+        storefrontPaymentMethods: updatedProfile.storefrontPaymentMethods,
+        storefrontReturnPolicy: updatedProfile.storefrontReturnPolicy,
+        storefrontBusinessHours: updatedProfile.storefrontBusinessHours,
         verified: updatedProfile.verified,
         phoneVerified: updatedProfile.phoneVerified,
         businessName: updatedProfile.businessName,
@@ -1264,7 +1269,7 @@ export async function PUT(request: NextRequest) {
         totalReviews: updatedProfile.totalReviews || 0,
         joinedDate: updatedProfile.createdAt,
         pendingEmail: updatedProfile.pendingEmail,
-        specialties: updatedProfile.specialties,
+        specialties: [], // Removed from database, kept for backward compatibility
         website: updatedProfile.socialWebsite || updatedProfile.profileWebsite || null,
         facebook: updatedProfile.facebook || null,
         instagram: updatedProfile.instagram || null,

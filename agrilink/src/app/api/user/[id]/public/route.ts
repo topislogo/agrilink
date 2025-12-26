@@ -222,6 +222,7 @@ export async function GET(
       location: user.location,
       profileImage: user.profileImage,
       storefrontImage: user.storefrontImage,
+      description: user.storefrontDescription || user.businessDescription || '', // For backward compatibility with SellerStorefront
       storefrontDescription: user.storefrontDescription, // Customer-facing storefront description
       storefrontDelivery: user.storefrontDelivery,
       storefrontPaymentMethods: user.storefrontPaymentMethods,
