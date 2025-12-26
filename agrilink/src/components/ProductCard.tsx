@@ -103,7 +103,7 @@ export function ProductCard({
           </div>
           
           {/* Save/Heart button for buyers (not on own products) */}
-          {!isOwnProduct && onSaveProduct && currentUser && (
+          {!isOwnProduct && onSaveProduct && currentUser && currentUser.userType === 'buyer' && (
             <Button
               variant="ghost"
               size="sm"

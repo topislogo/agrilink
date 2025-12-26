@@ -269,9 +269,7 @@ export const savedProducts = pgTable('saved_products', {
   userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
   productId: uuid('productId').notNull().references(() => products.id, { onDelete: 'cascade' }),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  uniqueUserProduct: unique().on(table.userId, table.productId),
-}));
+});
 
 // ============================================================================
 // MESSAGING SYSTEM
