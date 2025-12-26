@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from '@/lib/db';
 
-
-
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -16,7 +13,7 @@ export async function GET(
     const isEmail = identifier.includes('@');
     
     // Get user information with complete profile data from core tables
-    // Note: storefrontDescription column may not exist yet if migration hasn't been applied
+    // Using storefront_details table for customer-facing information
     let userData;
     try {
       if (isEmail) {
@@ -30,10 +27,10 @@ export async function GET(
             sd."paymentMethods" as "storefrontPaymentMethods",
             sd."returnPolicy" as "storefrontReturnPolicy",
             sd."businessHours" as "storefrontBusinessHours",
-            up.phone, up.website as "profileWebsite",
-            us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+            up.phone, up.website as "profileWebsite", up."aboutme",
+            us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite", us."telegram",
             uv.verified, uv."phoneVerified", uv."verificationStatus", 
-            bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+            bd."businessName", bd."businessDescription", bd."businessLicenseNumber"
           FROM users u
           LEFT JOIN user_profiles up ON u.id = up."userId"
           LEFT JOIN locations l ON up."locationId" = l.id
@@ -54,10 +51,10 @@ export async function GET(
             sd."paymentMethods" as "storefrontPaymentMethods",
             sd."returnPolicy" as "storefrontReturnPolicy",
             sd."businessHours" as "storefrontBusinessHours",
-            up.phone, up.website as "profileWebsite",
-            us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+            up.phone, up.website as "profileWebsite", up."aboutme",
+            us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite", us."telegram",
             uv.verified, uv."phoneVerified", uv."verificationStatus", 
-            bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+            bd."businessName", bd."businessDescription", bd."businessLicenseNumber"
           FROM users u
           LEFT JOIN user_profiles up ON u.id = up."userId"
           LEFT JOIN locations l ON up."locationId" = l.id
@@ -70,9 +67,9 @@ export async function GET(
         `;
       }
     } catch (dbError: any) {
-      // If storefrontDescription column doesn't exist yet, query without it
-      if (dbError.message && dbError.message.includes('storefrontDescription')) {
-        console.log('⚠️ storefrontDescription column not found, querying without it');
+      // If storefront_details table doesn't exist yet, query without it
+      if (dbError.message && (dbError.message.includes('storefront_details') || dbError.message.includes('storefrontDescription'))) {
+        console.log('⚠️ storefront_details table not found, querying without it');
         if (isEmail) {
           userData = await sql`
             SELECT 
@@ -80,10 +77,14 @@ export async function GET(
               u."userType", u."accountType",
               l.city as location, l.region, up."profileImage", up."storefrontImage", 
               NULL as "storefrontDescription",
-              up.phone, up.website as "profileWebsite",
-              us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+              NULL as "storefrontDelivery",
+              NULL as "storefrontPaymentMethods",
+              NULL as "storefrontReturnPolicy",
+              NULL as "storefrontBusinessHours",
+              up.phone, up.website as "profileWebsite", up."aboutme",
+              us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite", us."telegram",
               uv.verified, uv."phoneVerified", uv."verificationStatus", 
-              bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+              bd."businessName", bd."businessDescription", bd."businessLicenseNumber"
             FROM users u
             LEFT JOIN user_profiles up ON u.id = up."userId"
             LEFT JOIN locations l ON up."locationId" = l.id
@@ -99,10 +100,14 @@ export async function GET(
               u.id, u.name, u.email, u."userType", u."accountType", u."createdAt" as "joinedDate",
               l.city as location, l.region, up."profileImage", up."storefrontImage", 
               NULL as "storefrontDescription",
-              up.phone, up.website as "profileWebsite",
-              us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite",
+              NULL as "storefrontDelivery",
+              NULL as "storefrontPaymentMethods",
+              NULL as "storefrontReturnPolicy",
+              NULL as "storefrontBusinessHours",
+              up.phone, up.website as "profileWebsite", up."aboutme",
+              us.facebook, us.instagram, us.whatsapp, us.tiktok, us.website as "socialWebsite", us."telegram",
               uv.verified, uv."phoneVerified", uv."verificationStatus", 
-              bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties
+              bd."businessName", bd."businessDescription", bd."businessLicenseNumber"
             FROM users u
             LEFT JOIN user_profiles up ON u.id = up."userId"
             LEFT JOIN locations l ON up."locationId" = l.id
@@ -223,6 +228,7 @@ export async function GET(
       storefrontReturnPolicy: user.storefrontReturnPolicy,
       phone: user.phone,
       website: user.socialWebsite || user.profileWebsite || user.website || null,
+      aboutme: user.aboutme,
       facebook: user.facebook || null,
       instagram: user.instagram || null,
       whatsapp: user.whatsapp || null,
@@ -232,20 +238,20 @@ export async function GET(
       businessName: user.businessName,
       businessDescription: user.businessDescription, // Official business description from verification
       businessHours: user.storefrontBusinessHours || null, // From storefront_details (customer-facing)
-      specialties: user.specialties,
+      specialties: [], // Removed from business_details, kept for backward compatibility
       policies: {
-        delivery: user.storefrontDelivery || '',
-        payment: user.storefrontPaymentMethods || '',
-        returns: user.storefrontReturnPolicy || ''
+        delivery: user.storefrontDelivery || user.policies?.delivery || '',
+        payment: user.storefrontPaymentMethods || user.policies?.payment || '',
+        returns: user.storefrontReturnPolicy || user.policies?.returns || ''
       },
       
-      // Social media (placeholder)
+      // Social media
       social: {
-        facebook: null,
-        instagram: null,
-        telegram: null,
-        whatsapp: null,
-        tiktok: null
+        facebook: user.facebook || null,
+        instagram: user.instagram || null,
+        telegram: user.telegram || null,
+        whatsapp: user.whatsapp || null,
+        tiktok: user.tiktok || null
       },
       
       // Verification status (flattened for compatibility with getUserVerificationLevel)

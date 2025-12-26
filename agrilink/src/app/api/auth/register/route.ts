@@ -45,10 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
+    const normalizedEmail = email.trim().toLowerCase();
+
     const existingUsers = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.email, normalizedEmail))
       .limit(1);
 
     if (existingUsers.length > 0) {
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     // Create user in database using Drizzle (simplified structure)
     const newUser = await db.insert(users).values({
-      email,
+      email: normalizedEmail,
       name,
       passwordHash,
       userType,

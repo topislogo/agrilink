@@ -66,9 +66,17 @@ export default function RegisterPage() {
   ];
 
   const validateForm = () => {
+    const isValidEmail = (email: string) => {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      return emailRegex.test(email.trim());
+    };
     // Basic info validation (phone is now optional)
     if (!formData.name || !formData.email || !formData.password) {
       setError('Please fill in all required fields in the Personal Information section');
+      return false;
+    }
+    if (!isValidEmail(formData.email)) {
+      setError('Invalid email format');
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -82,7 +90,8 @@ export default function RegisterPage() {
       setError(passwordValidation.message || 'Password does not meet requirements');
       return false;
     }
-    
+
+    // Email format validation
     if (!formData.email.includes('@')) {
       setError('Please enter a valid email address');
       return false;
@@ -148,7 +157,7 @@ export default function RegisterPage() {
           router.push("/dashboard");
         }
       } else {
-        setError(data.message || 'Registration failed. Please try again.');
+        setError(data.message || data.error || 'Registration failed. Please try again.');
       }
     } catch (err: any) {
       setError('Network error. Please try again.');
