@@ -38,7 +38,7 @@ interface SavedProduct {
   savedDate: string;
   priceWhenSaved: number;
   createdAt: string;
-  alerts: {
+  alerts?: {
     priceAlert?: boolean;
     stockAlert?: boolean;
   };
@@ -71,7 +71,7 @@ export function BuyerDashboard({
   // Simple dashboard stats focused on saved products
   const dashboardStats = useMemo(() => {
     const savedProductsCount = savedProducts.length;
-    const priceAlertsActive = savedProducts.filter(sp => sp.alerts.priceAlert).length;
+    const priceAlertsActive = savedProducts.filter(sp => sp.alerts?.priceAlert).length;
     const priceDropsDetected = savedProductsWithData.filter(sp => sp.currentPrice < sp.priceWhenSaved).length;
     return {
       savedProductsCount, priceAlertsActive, priceDropsDetected

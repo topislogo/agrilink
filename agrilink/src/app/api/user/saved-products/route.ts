@@ -11,16 +11,12 @@ import {
 import { eq, desc, and } from 'drizzle-orm';
 
 function verifyToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.split(' ')[1];
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    return decoded;
-  } catch (error: any) {
+    const token = authHeader.substring(7);
+    return jwt.verify(token, process.env.JWT_SECRET!) as any;
+  } catch {
     return null;
   }
 }
@@ -188,8 +184,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const productId = searchParams.get('productId');
+    const body = await request.json();
+    const { productId } = body;
 
     if (!productId) {
       return NextResponse.json(

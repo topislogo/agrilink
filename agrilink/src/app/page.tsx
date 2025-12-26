@@ -41,6 +41,7 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
   
   // Chat popup state
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -81,6 +82,8 @@ export default function HomePage() {
       }
     };
 
+    fetchSavedProducts();
+
     fetchProducts();
   }, []);
 
@@ -97,6 +100,28 @@ export default function HomePage() {
       }
     }
   }, [products, currentUser]);
+  
+  const fetchSavedProducts = async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const response = await fetch('/api/user/saved-products', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const savedIds = data.savedProducts.map((sp: any) => sp.product.id);
+          setSavedProductIds(savedIds);
+        } else {
+          console.error('Failed to fetch saved products:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching saved products:', error);
+      }
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -229,6 +254,33 @@ export default function HomePage() {
     router.push(`/offers/${productId}`);
   };
 
+  const handleSaveProduct = async (productId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!savedProductIds.includes(productId)) {
+        const response = await fetch("/api/user/saved-products", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ productId: productId }),
+        });
+      } else {
+        const response = await fetch("/api/user/saved-products", {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ productId: productId }),
+        });
+      }
+      await fetchSavedProducts();
+    } catch (error) {
+      console.error("Failed to save product:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader 
@@ -282,6 +334,8 @@ export default function HomePage() {
                   onSellerClick={handleSellerClick}
                   onChatClick={(sellerId) => handleOpenChat(sellerId, product.id)}
                   onOfferClick={handleOfferClick}
+                  onSaveProduct={handleSaveProduct}
+                  savedProductIds={savedProductIds}
                 />
               ))}
             </div>
