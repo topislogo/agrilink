@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     const [userProfile] = await dbSql`
       SELECT 
         u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
-        bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
+        bd."businessName", bd."businessDescription", bd."businessLicenseNumber",
         l.city, l.region, up.phone, up."profileImage", up."storefrontImage", up.website as "profileWebsite",
         sd.description as "storefrontDescription",
         sd.delivery as "storefrontDelivery",
@@ -1126,7 +1126,7 @@ export async function PUT(request: NextRequest) {
       [updatedProfile] = await dbSql`
         SELECT 
           u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
-          bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
+          bd."businessName", bd."businessDescription", bd."businessLicenseNumber",
           l.city, l.region, up.phone, up."profileImage", up."storefrontImage", up.website as "profileWebsite",
           sd.description as "storefrontDescription",
           sd.delivery as "storefrontDelivery",
@@ -1152,7 +1152,7 @@ export async function PUT(request: NextRequest) {
         [updatedProfile] = await dbSql`
           SELECT 
             u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
-            bd."businessName", bd."businessDescription", bd."businessLicenseNumber", bd.specialties,
+            bd."businessName", bd."businessDescription", bd."businessLicenseNumber",
             l.city, l.region, up.phone, up."profileImage", up."storefrontImage", 
             NULL as "storefrontDescription",
             uv.verified, uv."phoneVerified", uv."verificationStatus", uv."verificationDocuments", uv."rejectedDocuments", uv."businessDetailsCompleted",

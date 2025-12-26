@@ -42,10 +42,7 @@ export async function POST(request: NextRequest) {
             // Business details (if provided)
             businessName,
             businessDescription,
-            businessLicenseNumber,
-            businessHours,
-            specialties,
-            policies
+            businessLicenseNumber
          } = body;
 
         // Idempotency guard: if there's already a pending/under_review request, return it instead of inserting a new one
@@ -245,7 +242,7 @@ export async function POST(request: NextRequest) {
         
         console.log('✅ User verification status updated to under-review');
 
-        if (businessName || businessDescription || businessLicenseNumber || businessHours || specialties || policies) {
+        if (businessName || businessDescription || businessLicenseNumber) {
             console.log('🔄 Handling business details...');
         
             // Check if business details already exist for this user
@@ -262,9 +259,6 @@ export async function POST(request: NextRequest) {
                     "businessName" = ${businessName || null},
                     "businessDescription" = ${businessDescription || null},
                     "businessLicenseNumber" = ${businessLicenseNumber || null},
-                    "businessHours" = ${businessHours || null},
-                    "specialties" = ${specialties || null},
-                    "policies" = ${policies ? JSON.stringify(policies) : null},
                     "updatedAt" = NOW()
                 WHERE "userId" = ${userId}
                 `;
@@ -278,9 +272,6 @@ export async function POST(request: NextRequest) {
                     "businessName",
                     "businessDescription",
                     "businessLicenseNumber",
-                    "businessHours",
-                    "specialties",
-                    "policies",
                     "createdAt",
                     "updatedAt"
                 ) VALUES (
@@ -288,9 +279,6 @@ export async function POST(request: NextRequest) {
                     ${businessName || null},
                     ${businessDescription || null},
                     ${businessLicenseNumber || null},
-                    ${businessHours || null},
-                    ${specialties || null},
-                    ${policies ? JSON.stringify(policies) : null},
                     NOW(),
                     NOW()
                 )

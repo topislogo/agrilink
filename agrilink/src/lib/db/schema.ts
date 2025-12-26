@@ -148,15 +148,13 @@ export const userVerification = pgTable('user_verification', {
 }));
 
 // Business details table - Business-specific information
+// Note: businessHours, specialties, and policies have been moved to storefront_details
 export const businessDetails = pgTable('business_details', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
   businessName: text('businessName'),
   businessDescription: text('businessDescription'),
-  businessHours: text('businessHours'),
   businessLicenseNumber: text('businessLicenseNumber'),
-  specialties: text('specialties').array(),
-  policies: jsonb('policies'),
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
 }, (table) => ({
