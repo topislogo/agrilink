@@ -25,6 +25,7 @@ import {
   Banknote,
   Smartphone
 } from "lucide-react";
+import { myanmarRegions } from "@/utils/regions";
 
 interface SimpleOfferModalProps {
   isOpen: boolean;
@@ -213,33 +214,24 @@ export function SimpleOfferModal({
     addressLine1: '',
     addressLine2: '',
     city: '',
-    state: '',
+    state: '', // This will store the region key (e.g., 'yangon', 'mandalay')
     postalCode: ''
   });
 
-  const [locations, setLocations] = useState<Array<{ id: string; city: string; region: string }>>([]);
-  const [groupedLocations, setGroupedLocations] = useState<Record<string, Array<{ id: string; city: string; region: string }>>>({});
+  // Get available cities based on selected region (using myanmarRegions)
+  const getAvailableCities = () => {
+    if (!newAddress.state) {
+      return [];
+    }
+    return myanmarRegions[newAddress.state as keyof typeof myanmarRegions]?.cities || [];
+  };
 
   // Fetch user addresses when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchUserAddresses();
-      fetchLocations();
     }
   }, [isOpen]);
-
-  const fetchLocations = async () => {
-    try {
-      const response = await fetch('/api/locations');
-      if (response.ok) {
-        const data = await response.json();
-        setLocations(data.locations);
-        setGroupedLocations(data.groupedLocations);
-      }
-    } catch (error) {
-      console.error('Error fetching locations:', error);
-    }
-  };
 
   const fetchUserAddresses = async () => {
     try {
@@ -266,23 +258,57 @@ export function SimpleOfferModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Collect all validation errors
+    const errors: string[] = [];
+    
     // Validate required fields
     if (!offerPrice || !quantity) {
-      alert('Please fill in all required fields (Price and Quantity)');
-      return;
+      errors.push('Offer Price and Quantity are required');
     }
 
     // Validate delivery options
     const validDeliveryOptions = deliveryOptions.filter(opt => opt && opt !== '');
     if (validDeliveryOptions.length === 0) {
-      alert('Please select at least one delivery option');
-      return;
+      errors.push('Please select a delivery option');
     }
 
     // Validate payment terms
     const validPaymentTerms = paymentTerms.filter(term => term && term !== '');
     if (validPaymentTerms.length === 0) {
-      alert('Please select at least one payment term');
+      errors.push('Please select payment terms');
+    }
+
+    // Check if delivery option requires address (not Pickup)
+    const selectedDeliveryOption = deliveryOptions[0];
+    const isPickup = selectedDeliveryOption && 
+      ['Pickup', 'pickup', 'Pick Up', 'pick up', 'Farm Pickup', 'farm pickup'].includes(selectedDeliveryOption);
+    const requiresAddress = selectedDeliveryOption && !isPickup;
+    
+    // Validate address is provided when required
+    if (requiresAddress) {
+      if (showNewAddress) {
+        // Validate all new address fields
+        const missingFields: string[] = [];
+        if (!newAddress.fullName) missingFields.push('Full Name');
+        if (!newAddress.phone) missingFields.push('Phone');
+        if (!newAddress.addressLine1) missingFields.push('Address Line 1');
+        if (!newAddress.city) missingFields.push('City');
+        if (!newAddress.state) missingFields.push('State/Region');
+        
+        if (missingFields.length > 0) {
+          errors.push(`Please fill in all required address fields: ${missingFields.join(', ')}`);
+        }
+      } else {
+        // Validate selected address
+        if (!selectedAddressId) {
+          errors.push('Please select a delivery address');
+        }
+      }
+    }
+    
+    // Show all errors at once
+    if (errors.length > 0) {
+      alert(`Please complete the following:\n\n${errors.join('\n')}`);
       return;
     }
 
@@ -290,16 +316,6 @@ export function SimpleOfferModal({
     
     // Get selected address or new address (only if delivery option requires address)
     let deliveryAddress = undefined;
-    const selectedDeliveryOption = deliveryOptions[0];
-    const requiresAddress = selectedDeliveryOption && 
-      [
-        // From SimplifiedProductForm
-        'Local Delivery (Within 10km)', 'Regional Delivery', 'Nationwide Shipping', 'Express Delivery', 'Cold Chain Transport',
-        // From products/new page
-        'Delivery', 'Shipping', 'Local Transport',
-        // Additional delivery options
-        'Local Delivery', 'Regional Transport', 'Cold Chain Delivery', 'Bulk Transport', 'Custom Logistics'
-      ].includes(selectedDeliveryOption);
     
     if (requiresAddress) {
       if (showNewAddress) {
@@ -409,7 +425,7 @@ export function SimpleOfferModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-1">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {/* Product Info */}
           <Card>
             <CardContent className="p-3">
@@ -526,7 +542,6 @@ export function SimpleOfferModal({
                 placeholder="1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                required
                 min="1"
               />
             </div>
@@ -539,7 +554,6 @@ export function SimpleOfferModal({
               <Select 
                 value={deliveryOptions[0] || ''} 
                 onValueChange={(value) => setDeliveryOptions([value])}
-                required
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select delivery option *" />
@@ -562,7 +576,6 @@ export function SimpleOfferModal({
               <Select 
                 value={paymentTerms[0] || ''} 
                 onValueChange={(value) => setPaymentTerms([value])}
-                required
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment terms *" />
@@ -582,15 +595,15 @@ export function SimpleOfferModal({
           </div>
 
           {/* Address Selection for Delivery Options that require address */}
-          {deliveryOptions[0] && deliveryOptions[0] !== 'Pickup' && (
+          {deliveryOptions[0] && !['Pickup', 'pickup', 'Pick Up', 'pick up', 'Farm Pickup', 'farm pickup'].includes(deliveryOptions[0]) && (
             <div className="space-y-3">
-              <Label>Delivery Address</Label>
+              <Label>Delivery Address <span className="text-red-500">*</span></Label>
               
               {!showNewAddress && userAddresses.length > 0 && (
                 <div className="space-y-2">
                   <Select value={selectedAddressId} onValueChange={setSelectedAddressId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select an address" />
+                      <SelectValue placeholder="Select an address *" />
                     </SelectTrigger>
                     <SelectContent>
                       {userAddresses.map((address) => (
@@ -721,7 +734,7 @@ export function SimpleOfferModal({
                     
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="fullName" className="text-xs">Full Name</Label>
+                        <Label htmlFor="fullName" className="text-xs">Full Name <span className="text-red-500">*</span></Label>
                         <Input
                           id="fullName"
                           value={newAddress.fullName}
@@ -731,7 +744,7 @@ export function SimpleOfferModal({
                       </div>
                       
                       <div>
-                        <Label htmlFor="phone" className="text-xs">Phone</Label>
+                        <Label htmlFor="phone" className="text-xs">Phone <span className="text-red-500">*</span></Label>
                         <Input
                           id="phone"
                           value={newAddress.phone}
@@ -742,7 +755,7 @@ export function SimpleOfferModal({
                     </div>
                     
                     <div>
-                      <Label htmlFor="addressLine1" className="text-xs">Address Line 1</Label>
+                      <Label htmlFor="addressLine1" className="text-xs">Address Line 1 <span className="text-red-500">*</span></Label>
                       <Input
                         id="addressLine1"
                         value={newAddress.addressLine1}
@@ -762,45 +775,57 @@ export function SimpleOfferModal({
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label htmlFor="state" className="text-xs">State/Region</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10" />
+                        <Label htmlFor="state" className="text-xs">State/Region <span className="text-red-500">*</span></Label>
                         <Select
                           value={newAddress.state}
                           onValueChange={(value) => {
                             setNewAddress({...newAddress, state: value, city: ''}); // Reset city when region changes
                           }}
                         >
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Select State/Region" />
+                          <SelectTrigger className="h-8 pl-10">
+                            <SelectValue placeholder="Select State/Region *" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {Object.keys(groupedLocations).map((region) => (
-                              <SelectItem key={region} value={region}>
-                                {region}
+                          <SelectContent className="max-h-64 overflow-y-auto">
+                            {Object.entries(myanmarRegions).map(([key, region]) => (
+                              <SelectItem key={key} value={key}>
+                                {region.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
-                        <Label htmlFor="city" className="text-xs">City</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10" />
+                        <Label htmlFor="city" className="text-xs">City <span className="text-red-500">*</span></Label>
                         <Select
                           value={newAddress.city}
                           onValueChange={(value) => setNewAddress({...newAddress, city: value})}
                           disabled={!newAddress.state}
                         >
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Select City" />
+                          <SelectTrigger className="h-8 pl-10">
+                            <SelectValue placeholder="Select City *" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {newAddress.state && groupedLocations[newAddress.state]?.map((location) => (
-                              <SelectItem key={location.id} value={location.city}>
-                                {location.city}
+                          <SelectContent className="max-h-64 overflow-y-auto">
+                            {getAvailableCities().map((city) => (
+                              <SelectItem key={city} value={city}>
+                                {city}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="postalCode" className="text-xs">Postal Code (Optional)</Label>
+                      <Input
+                        id="postalCode"
+                        value={newAddress.postalCode}
+                        onChange={(e) => setNewAddress({...newAddress, postalCode: e.target.value})}
+                        className="h-8"
+                      />
                     </div>
                   </CardContent>
                 </Card>
