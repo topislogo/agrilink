@@ -286,15 +286,6 @@ export default function HomePage() {
       <AppHeader 
         currentUser={currentUser}
         onLogout={handleLogout}
-        onGoToLogin={handleGoToLogin}
-        onGoToRegister={handleGoToRegister}
-        onGoToDashboard={handleGoToDashboard}
-        onViewMessages={handleViewMessages}
-        onViewProfile={handleViewProfile}
-        onEditProfile={handleEditProfile}
-        onShowVerification={handleShowVerification}
-        onShowAdminVerification={handleShowAdminVerification}
-        onUpdateUser={handleUpdateUser}
       />
       
       <div className="max-w-5xl mx-auto px-4 py-8">

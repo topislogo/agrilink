@@ -7,6 +7,30 @@ import { FreshDashboard } from "@/components/FreshDashboard";
 import { BuyerDashboard } from "@/components/BuyerDashboard";
 import { AppHeader } from "@/components/AppHeader";
 import { User } from "@/hooks/useAuth";
+import { ChatInterface } from "@/components/ChatInterface";
+
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  unit: string;
+  imageUrl?: string;
+  sellerId?: string;
+  availableQuantity?: string;
+  seller: {
+    id: string;
+    name: string;
+    userType: string;
+    location: string;
+    verified?: boolean;
+    phoneVerified?: boolean;
+    verificationStatus?: string;
+    accountType?: string;
+  };
+  createdAt: string;
+}
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -14,6 +38,9 @@ export default function DashboardPage() {
   const [savedProducts, setSavedProducts] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedSeller, setSelectedSeller] = useState<any>(null);
   const router = useRouter();
 
   const fetchUserProducts = async (userId: string) => {
@@ -197,6 +224,60 @@ export default function DashboardPage() {
   const verificationInfo = getVerificationStatus();
   const VerificationIcon = verificationInfo.icon;
 
+  const handleOpenChat = async (productId: string, sellerId: string) => {
+    // Find the product and seller data
+    //const product = savedProducts.find(p => p.id === productId);
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) return;
+    
+    // Open chat immediately with available product data
+    setSelectedProduct(product);
+    setIsChatOpen(true);
+    
+    // Set initial seller data from product (may not have profileImage)
+    setSelectedSeller({
+      id: sellerId,
+      name: product.seller.name,
+      userType: product.seller.userType,
+      location: product.seller.location,
+      verified: product.seller.verified,
+      accountType: product.seller.accountType,
+      ratings: { rating: 0 },
+      profileImage: null // Will be updated below
+    });
+    console.log('💬 Opening chat for product:', productId, 'with seller:', sellerId);
+    // Fetch full seller profile in background to get profileImage and other details
+    // Use the same approach as notification handler
+    try {
+      // Determine which API endpoint to use based on user type
+      const isSeller = product.seller.userType === 'farmer' || product.seller.userType === 'trader';
+      const profileRoute = `/api/user/${sellerId}/public`;
+      
+      const profileResponse = await fetch(profileRoute);
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const fullSellerData = profileData.stats || profileData.user || profileData;
+        
+        // Update seller data with full profile including profileImage
+        setSelectedSeller({
+          id: sellerId,
+          name: fullSellerData.name || product.seller.name,
+          userType: fullSellerData.userType || product.seller.userType,
+          location: fullSellerData.location || product.seller.location,
+          verified: fullSellerData.verified ?? product.seller.verified,
+          accountType: fullSellerData.accountType || product.seller.accountType,
+          ratings: fullSellerData.ratings || { rating: 0 },
+          profileImage: fullSellerData.profileImage || null
+        });
+        console.log('✅ Fetched full seller profile with profileImage:', fullSellerData.profileImage ? 'Yes' : 'No');
+      } else {
+        console.warn('⚠️ Failed to fetch full seller profile, using product data');
+      }
+    } catch (error) {
+      console.error('Error fetching seller profile:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader currentUser={user} onLogout={handleLogout} />
@@ -209,10 +290,7 @@ export default function DashboardPage() {
             savedProducts={savedProducts}
             onGoToMarketplace={() => router.push("/")}
             onViewProduct={(productId) => router.push(`/product/${productId}`)}
-            onStartChat={(productId, sellerId) => {
-              // Handle chat functionality
-              console.log("Start chat:", productId, sellerId);
-            }}
+            onStartChat = {(productId, sellerId) => handleOpenChat(productId, sellerId)}
             onViewMessages={() => router.push("/messages")}
             onShowVerification={() => router.push("/verify")}
           />
@@ -327,6 +405,46 @@ export default function DashboardPage() {
           />
         )}
       </div>
+
+      {/* Chat Popup */}
+        {isChatOpen && selectedProduct && selectedSeller && user && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl w-96 h-[500px] flex flex-col border border-gray-200">
+              <ChatInterface
+                otherPartyName={selectedSeller.name}
+                otherPartyType={selectedSeller.userType}
+                otherPartyAccountType={selectedSeller.accountType || 'individual'}
+                otherPartyLocation={selectedSeller.location || ''}
+                otherPartyRating={selectedSeller.ratings?.rating || 0}
+                productName={selectedProduct.name}
+                productId={selectedProduct.id}
+                otherPartyId={selectedSeller.id}
+                onClose={() => {
+                  setIsChatOpen(false);
+                  setSelectedProduct(null);
+                  setSelectedSeller(null);
+                }}
+                otherPartyVerified={selectedSeller.verified || false}
+                otherPartyProfileImage={selectedSeller.profileImage}
+                otherPartyVerificationStatus={{
+                  trustLevel: selectedSeller.verified ? (selectedSeller.accountType === 'business' ? 'business-verified' : 'id-verified') : 'unverified',
+                  tierLabel: selectedSeller.verified ? (selectedSeller.accountType === 'business' ? 'Business ✓' : 'Verified') : 'Unverified',
+                  levelBadge: selectedSeller.verified ? (selectedSeller.accountType === 'business' ? '✓' : '✓') : '⚠'
+                }}
+                product={{
+                  id: selectedProduct.id,
+                  name: selectedProduct.name,
+                  price: selectedProduct.price,
+                  unit: selectedProduct.unit,
+                  image: selectedProduct.imageUrl,
+                  sellerId: selectedSeller.id,
+                  availableQuantity: selectedProduct.availableQuantity || '0'
+                }}
+                currentUser={user}
+              />
+            </div>
+          </div>
+        )}
     </div>
   );
 }
