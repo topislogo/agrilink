@@ -47,6 +47,9 @@ interface Conversation {
   productId: string;
   productName: string;
   productImage: string;
+  productPrice: number;
+  productUnit: string;
+  productAvailableQuantity?: string;
   otherParty: {
     id: string;
     name: string;
@@ -432,6 +435,15 @@ export default function MessagesPage() {
                       levelBadge: getOtherPartyVerificationLevel(conversation.otherParty) === 'id-verified' ? '✓' : '!'
                     }}
                     currentUser={authUser || user}
+                    product={{
+                      id: conversation.productId,
+                      name: conversation.productName,
+                      price: conversation.productPrice,
+                      unit: conversation.productUnit,
+                      image: conversation.productImage,
+                      sellerId: conversation.otherParty.id,
+                      availableQuantity: conversation.productAvailableQuantity || '0'
+                    }}
                   />
                 );
               })()}
