@@ -725,48 +725,7 @@ export function SellerStorefront({
 
                 <Separator />
 
-                {/* Business Hours */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Business Hours</span>
-                    </div>
-                    {isOwnStorefront && !previewMode && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => startEditing('businessHours', storefrontData.businessHours)}
-                        className="h-8 w-8 p-0 opacity-60 hover:opacity-100"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {editing?.field === 'businessHours' ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={editing.value}
-                        onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                        placeholder="e.g., 9 AM - 6 PM, Mon-Sat"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleSave('businessHours', editing.value)}>
-                          <Save className="w-4 h-4 mr-1" />
-                          Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={cancelEditing}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {storefrontData.businessHours || (isOwnStorefront && !previewMode ? 'Add your business hours' : 'Business hours not specified')}
-                    </p>
-                  )}
-                </div>
+              
 
                 {/* Member Since & Response Time */}
                 <div className="space-y-2">

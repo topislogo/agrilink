@@ -187,6 +187,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     
     const { 
+      name,
       profileImage, 
       storefrontImage,
       storefront_description,
@@ -222,6 +223,7 @@ export async function PUT(request: NextRequest) {
     console.log('🔍 storefront_return_policy from body:', body.storefront_return_policy);
     
     console.log('📥 Request body received:', {
+      name,
       business_name,
       business_description,
       business_license_number,
@@ -405,6 +407,11 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Update name
+
+    if (name !== undefined && user.userId) {
+      await db.update(users).set({ name }).where(eq(users.id, user.userId));
+    }
     // Update phone
     if (phone !== undefined) {
       // Check if user_profiles record exists

@@ -9,29 +9,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { S3Image, clearS3ImageCache } from './S3Image';
 import { useState, useRef, useEffect } from "react";
-import { 
-  User, 
-  MapPin, 
-  Phone, 
-  Store, 
-  Shield, 
-  Mail,
-  Calendar,
-  Star,
-  CheckCircle,
-  AlertCircle,
-  ChevronLeft,
-  Edit,
-  Save,
-  X,
-  Camera,
-  Trash2,
-  Clock,
-  Key,
-  Eye,
-  EyeOff,
-  Loader2,
-} from "lucide-react";
+import { User, MapPin,Phone,Store,Shield,Mail,Calendar,Star,CheckCircle,AlertCircle,ChevronLeft,Edit,Save,X,Camera,Trash2,Clock,Key,Eye,EyeOff,Loader2} from "lucide-react";
 import { formatMemberSinceDate } from "../utils/dates";
 import { AddressManagement } from "./AddressManagement";
 import { PhoneVerification } from "./PhoneVerification";
