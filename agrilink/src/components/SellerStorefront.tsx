@@ -991,7 +991,7 @@ export function SellerStorefront({
                                 <Input
                                   value={editing.value}
                                   onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                                  placeholder="facebook.com/yourpage"
+                                  placeholder="https://facebook.com/yourpage or facebook.com/yourpage"
                                   autoFocus
                                 />
                                 <div className="flex gap-2">
@@ -1030,10 +1030,13 @@ export function SellerStorefront({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 border border-blue-200">
                                   <Facebook className="w-5 h-5 text-blue-600" />
                                 </div>
+                                <span className="text-sm text-muted-foreground flex-1 italic">
+                                  https://facebook.com/yourpage
+                                </span>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1057,7 +1060,7 @@ export function SellerStorefront({
                                 <Input
                                   value={editing.value}
                                   onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                                  placeholder="instagram.com/yourprofile"
+                                  placeholder="https://instagram.com/yourprofile or @yourprofile"
                                   autoFocus
                                 />
                                 <div className="flex gap-2">
@@ -1096,10 +1099,13 @@ export function SellerStorefront({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-pink-50 border border-pink-200">
                                   <Instagram className="w-5 h-5 text-pink-600" />
                                 </div>
+                                <span className="text-sm text-muted-foreground flex-1 italic">
+                                  https://instagram.com/yourprofile
+                                </span>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1123,7 +1129,7 @@ export function SellerStorefront({
                                 <Input
                                   value={editing.value}
                                   onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                                  placeholder="+1234567890 or wa.me/1234567890"
+                                  placeholder="+95 9xxxxxxxxx or wa.me/1234567890"
                                   autoFocus
                                 />
                                 <div className="flex gap-2">
@@ -1162,10 +1168,13 @@ export function SellerStorefront({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-50 border border-green-200">
                                   <MessageCircle className="w-5 h-5 text-green-600" />
                                 </div>
+                                <span className="text-sm text-muted-foreground flex-1 italic">
+                                  +95 9xxxxxxxxx or wa.me/1234567890
+                                </span>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
@@ -1189,7 +1198,7 @@ export function SellerStorefront({
                                 <Input
                                   value={editing.value}
                                   onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                                  placeholder="Enter TikTok username or URL"
+                                  placeholder="tiktok.com/@username or @username"
                                   className="text-sm"
                                 />
                                 <div className="flex gap-2">
@@ -1228,10 +1237,13 @@ export function SellerStorefront({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black border border-gray-300">
                                   <Music className="w-5 h-5 text-white" />
                                 </div>
+                                <span className="text-sm text-muted-foreground flex-1 italic">
+                                  tiktok.com/@username
+                                </span>
                                 {isOwnStorefront && !previewMode && (
                                   <Button
                                     size="sm"
