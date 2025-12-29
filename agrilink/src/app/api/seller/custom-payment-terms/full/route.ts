@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db, sql } from '@/lib/db';
+import { db } from '@/lib/db';
 import { sellerCustomPaymentTerms, users } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 
 // Helper function to verify JWT token
@@ -63,32 +63,26 @@ export async function GET(request: NextRequest) {
     
     console.log('🔍 Custom payment terms full API - Fetching full options for seller:', sellerId);
 
-    try {
-      // Use raw SQL query similar to the regular payment terms endpoint
-      const customTerms = await sql`
-        SELECT id, name, "isActive", "createdAt", "updatedAt"
-        FROM seller_custom_payment_terms
-        WHERE "sellerId" = ${sellerId} AND "isActive" = true
-        ORDER BY "createdAt" ASC
-      `;
+    const customTerms = await db
+      .select({
+        id: sellerCustomPaymentTerms.id,
+        name: sellerCustomPaymentTerms.name,
+        isActive: sellerCustomPaymentTerms.isActive,
+        createdAt: sellerCustomPaymentTerms.createdAt,
+        updatedAt: sellerCustomPaymentTerms.updatedAt,
+      })
+      .from(sellerCustomPaymentTerms)
+      .where(and(
+        eq(sellerCustomPaymentTerms.sellerId, sellerId),
+        eq(sellerCustomPaymentTerms.isActive, true)
+      ))
+      .orderBy(asc(sellerCustomPaymentTerms.createdAt));
 
-      console.log('💳 Custom payment terms full API - Found terms:', customTerms.length);
-      console.log('💳 Custom payment terms full API - Terms data:', customTerms);
+    console.log('💳 Custom payment terms full API - Found terms:', customTerms.length);
 
-      return NextResponse.json({
-        options: customTerms
-      });
-    } catch (dbError: any) {
-      console.error('❌ Custom payment terms full API - Database error:', dbError);
-      console.error('❌ Database error details:', {
-        message: dbError?.message,
-        code: dbError?.code,
-        detail: dbError?.detail,
-        hint: dbError?.hint,
-        stack: dbError?.stack
-      });
-      throw dbError; // Re-throw to be caught by outer catch
-    }
+    return NextResponse.json({
+      options: customTerms
+    });
 
   } catch (error: any) {
     console.error('❌ Custom payment terms full API - Error:', error);
