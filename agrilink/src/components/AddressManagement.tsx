@@ -148,7 +148,7 @@ export function AddressManagement({ userId }: AddressManagementProps) {
       addressType: address.addressType,
       label: address.label,
       fullName: address.fullName,
-      phone: address.phone,
+      phone: address.phone || '',
       addressLine1: address.addressLine1,
       addressLine2: address.addressLine2 || '',
       city: address.city,
