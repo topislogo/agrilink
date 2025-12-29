@@ -14,6 +14,7 @@ import {
   Package, 
   Clock, 
   CheckCircle, 
+  CheckSquare,
   XCircle, 
   Truck, 
   MapPin,
@@ -79,7 +80,7 @@ interface OfferDetails {
   offerPrice: number;
   quantity: number;
   message?: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'to_ship' | 'shipped' | 'delivered' | 'received' | 'completed' | 'cancelled' | 'expired';
+  status: 'pending' | 'accepted' | 'rejected' | 'to_ship' | 'shipped' | 'delivered' | 'received' | 'ready_for_pickup' | 'picked_up' | 'completed' | 'cancelled' | 'expired';
   deliveryOptions: string[];
   deliveryAddress?: any;
   paymentTerms?: string[];
@@ -284,7 +285,10 @@ export default function OfferDetailsPage() {
       case 'rejected': return <XCircle className="w-4 h-4 text-red-600" />;
       case 'to_ship': return <Package className="w-4 h-4 text-purple-600" />;
       case 'shipped': return <Truck className="w-4 h-4 text-indigo-600" />;
-      case 'to_receive': return <CheckCircle className="w-4 h-4 text-orange-600" />;
+      case 'delivered': return <CheckSquare className="w-4 h-4 text-orange-600" />;
+      case 'received': return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'ready_for_pickup': return <Package className="w-4 h-4 text-purple-600" />;
+      case 'picked_up': return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'completed': return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'cancelled': return <XCircle className="w-4 h-4 text-gray-600" />;
       case 'expired': return <XCircle className="w-4 h-4 text-gray-600" />;
@@ -299,7 +303,10 @@ export default function OfferDetailsPage() {
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'to_ship': return 'bg-purple-100 text-purple-800';
       case 'shipped': return 'bg-indigo-100 text-indigo-800';
-      case 'to_receive': return 'bg-orange-100 text-orange-800';
+      case 'delivered': return 'bg-orange-100 text-orange-800';
+      case 'received': return 'bg-green-100 text-green-800';
+      case 'ready_for_pickup': return 'bg-purple-100 text-purple-800';
+      case 'picked_up': return 'bg-green-100 text-green-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-gray-100 text-gray-800';
       case 'expired': return 'bg-gray-100 text-gray-800';
@@ -679,12 +686,15 @@ export default function OfferDetailsPage() {
                           return <XCircle className="w-3 h-3 text-red-600" />;
                         case 'preparing':
                         case 'ready_to_pickup':
+                        case 'ready_for_pickup':
                           return <Package className="w-3 h-3 text-purple-600" />;
                         case 'shipped':
                           return <Truck className="w-3 h-3 text-indigo-600" />;
                         case 'delivered':
-                          return <CheckCircle className="w-3 h-3 text-orange-600" />;
+                          return <CheckSquare className="w-3 h-3 text-orange-600" />;
                         case 'picked_up':
+                          return <CheckSquare className="w-3 h-3 text-orange-600" />;
+                        case 'received':
                           return <CheckCircle className="w-3 h-3 text-green-600" />;
                         case 'completed':
                           return <CheckCircle className="w-3 h-3 text-green-600" />;
