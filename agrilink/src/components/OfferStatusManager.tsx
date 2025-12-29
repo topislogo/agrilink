@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { 
   Clock, 
   CheckCircle, 
+  CheckSquare,
   XCircle, 
   Truck, 
   Package, 
-  CheckSquare, 
   Ban,
   AlertCircle,
   AlertTriangle,
@@ -22,12 +22,14 @@ import {
 
 export interface OfferStatus {
   id: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'to_ship' | 'shipped' | 'delivered' | 'received' | 'completed' | 'cancelled' | 'expired';
+  status: 'pending' | 'accepted' | 'rejected' | 'to_ship' | 'shipped' | 'delivered' | 'received' | 'ready_for_pickup' | 'picked_up' | 'completed' | 'cancelled' | 'expired';
   statusUpdatedAt: string;
   readyToShipAt?: string;
   shippedAt?: string;
   deliveredAt?: string;
   receivedAt?: string;
+  readyToPickupAt?: string;
+  pickedUpAt?: string;
   completedAt?: string;
   cancelledAt?: string;
   cancelledBy?: string;
@@ -106,15 +108,48 @@ const statusConfig = {
     color: 'bg-gray-100 text-gray-600 border-gray-200',
     icon: AlertCircle,
     description: 'Offer expired'
+  },
+  ready_for_pickup: {
+    label: 'Ready for Pickup',
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Package,
+    description: 'Order is ready for pickup at the location'
+  },
+  picked_up: {
+    label: 'Picked Up',
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: CheckSquare,
+    description: 'Order picked up by buyer, waiting for buyer confirmation'
   }
 };
 
-const statusFlow = {
+// Helper function to detect if offer is pickup order
+const isPickupOrder = (deliveryOptions?: string[]): boolean => {
+  if (!deliveryOptions || deliveryOptions.length === 0) return false;
+  const pickupTerms = ['Pickup', 'pickup', 'Pick Up', 'pick up', 'Farm Pickup', 'farm pickup', 'Pick-up', 'pick-up'];
+  return deliveryOptions.some(option => pickupTerms.includes(option));
+};
+
+// Status flow for delivery orders
+const deliveryStatusFlow = {
   pending: ['accepted', 'rejected', 'cancelled'],
   accepted: ['to_ship', 'cancelled'], // Seller prepares to ship
   to_ship: ['shipped', 'cancelled'], // Seller ships the package
   shipped: ['delivered', 'cancelled'], // Seller marks as delivered
   delivered: ['received', 'cancelled'], // Buyer confirms receipt
+  received: [], // This status auto-completes to completed
+  completed: [], // Final state
+  rejected: [], // Final state
+  cancelled: [], // Final state
+  expired: [] // Final state
+};
+
+// Status flow for pickup orders
+const pickupStatusFlow = {
+  pending: ['accepted', 'rejected', 'cancelled'],
+  accepted: ['ready_for_pickup', 'cancelled'], // Seller prepares order for pickup
+  ready_for_pickup: ['picked_up', 'cancelled'], // Seller marks as picked up
+  picked_up: ['received', 'cancelled'], // Buyer confirms receipt
   received: [], // This status auto-completes to completed
   completed: [], // Final state
   rejected: [], // Final state
@@ -132,6 +167,12 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
   const [loadingComplaint, setLoadingComplaint] = useState(false);
   const [orderIssueStatus, setOrderIssueStatus] = useState<{ id: string; status: string; createdAt: string; reason?: string } | null>(null);
 
+  // Determine if this is a pickup order
+  const isPickup = isPickupOrder(offer.deliveryOptions);
+  
+  // Use appropriate status flow based on delivery type
+  const statusFlow = isPickup ? pickupStatusFlow : deliveryStatusFlow;
+  
   const currentStatusConfig = statusConfig[offer.status];
   const StatusIcon = currentStatusConfig.icon;
   const availableTransitions = statusFlow[offer.status] || [];
@@ -195,7 +236,8 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
   };
 
   const getActionButton = (status: string) => {
-    const actions = {
+    // Different actions for pickup vs delivery
+    const deliveryActions = {
       accepted: { 
         label: 'Mark Ready to Ship', 
         icon: Package 
@@ -208,6 +250,22 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
       }
     };
 
+    const pickupActions = {
+      accepted: { 
+        label: 'Mark Ready for Pickup', 
+        icon: Package 
+      },
+      ready_for_pickup: { 
+        label: 'Mark as Picked Up', 
+        icon: CheckCircle 
+      },
+      picked_up: { 
+        label: 'Mark as Received', 
+        icon: CheckCircle 
+      }
+    };
+
+    const actions = isPickup ? pickupActions : deliveryActions;
     const action = actions[status as keyof typeof actions];
     if (!action) return null;
 
@@ -217,6 +275,7 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
 
     return (
       <Button
+        key={`action-${status}`}
         onClick={() => handleStatusChange(nextStatus)}
         disabled={loading || !hasPermission}
         className="flex items-center gap-2"
@@ -229,43 +288,80 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
   };
 
   const getNextStatus = (currentStatus: string): string => {
-    const nextStatusMap = {
-      accepted: 'to_ship',
-      to_ship: 'shipped',
-      shipped: 'delivered',
-      delivered: 'received' // This will auto-complete to 'completed' in the API
-    };
-    return nextStatusMap[currentStatus as keyof typeof nextStatusMap] || currentStatus;
+    if (isPickup) {
+      const pickupNextStatusMap = {
+        accepted: 'ready_for_pickup',
+        ready_for_pickup: 'picked_up',
+        picked_up: 'received' // This will auto-complete to 'completed' in the API
+      };
+      return pickupNextStatusMap[currentStatus as keyof typeof pickupNextStatusMap] || currentStatus;
+    } else {
+      const deliveryNextStatusMap = {
+        accepted: 'to_ship',
+        to_ship: 'shipped',
+        shipped: 'delivered',
+        delivered: 'received' // This will auto-complete to 'completed' in the API
+      };
+      return deliveryNextStatusMap[currentStatus as keyof typeof deliveryNextStatusMap] || currentStatus;
+    }
   };
 
   const canPerformAction = (status: string) => {
     if (status === 'pending') {
       return offer.isSeller; // Only seller can accept/reject
     }
-    if (status === 'accepted' || status === 'to_ship' || status === 'shipped') {
-      return offer.isSeller; // Only seller can mark ready to ship, ship, and delivered
-    }
-    if (status === 'delivered') {
-      // Buyer can only mark as received if:
-      // 1. They are the buyer
-      // 2. No order issue has been reported at all
-      if (!offer.isBuyer) return false;
-      
-      // If there's any order issue (regardless of status), hide "Mark as Received" button completely
-      if (orderIssueStatus) {
-        return false; // Hide "Mark as Received" button permanently once issue is reported
+    
+    if (isPickup) {
+      // Pickup flow permissions
+      if (status === 'accepted' || status === 'ready_for_pickup') {
+        return offer.isSeller; // Only seller can mark ready for pickup
       }
-      
-      return true; // Only allow if no issue was ever reported
+      if (status === 'picked_up') {
+        // For picked_up status: seller already marked it, now buyer needs to mark as received
+        // So buyer should see "Mark as Received" button
+        if (!offer.isBuyer) return false; // Only buyer can perform action at this stage
+        
+        // If there's any order issue (regardless of status), hide "Mark as Received" button completely
+        if (orderIssueStatus) {
+          return false; // Hide "Mark as Received" button permanently once issue is reported
+        }
+        
+        return true; // Buyer can mark as received when status is picked_up
+      }
+    } else {
+      // Delivery flow permissions
+      if (status === 'accepted' || status === 'to_ship' || status === 'shipped') {
+        return offer.isSeller; // Only seller can mark ready to ship, ship, and delivered
+      }
+      if (status === 'delivered') {
+        // For delivered status: seller already marked it, now buyer needs to mark as received
+        // So buyer should see "Mark as Received" button
+        if (!offer.isBuyer) return false; // Only buyer can perform action at this stage
+        
+        // If there's any order issue (regardless of status), hide "Mark as Received" button completely
+        if (orderIssueStatus) {
+          return false; // Hide "Mark as Received" button permanently once issue is reported
+        }
+        
+        return true; // Buyer can mark as received when status is delivered
+      }
     }
     return false;
   };
 
   const canCancelOffer = () => {
-    const finalStates = ['completed', 'cancelled', 'expired', 'rejected'];
+    const finalStates = ['completed', 'cancelled', 'expired', 'rejected', 'received'];
     
     if (finalStates.includes(offer.status)) {
       return false; // Can't cancel if already in final state
+    }
+    
+    // Can't cancel if order is already picked up or delivered (too late)
+    if (isPickup && offer.status === 'picked_up') {
+      return false; // Order already picked up, can't cancel
+    }
+    if (!isPickup && offer.status === 'delivered') {
+      return false; // Order already delivered, can't cancel
     }
     
     // If there's an order issue reported, seller cannot cancel
@@ -279,8 +375,16 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
     }
     
     // After acceptance: Only seller can cancel, buyer is committed
-    if (['accepted', 'to_ship', 'shipped', 'delivered'].includes(offer.status)) {
-      return offer.isSeller; // Only seller can cancel after acceptance
+    if (isPickup) {
+      // Pickup flow cancellation - can cancel up to ready_for_pickup, but not after picked_up
+      if (['accepted', 'ready_for_pickup'].includes(offer.status)) {
+        return offer.isSeller; // Only seller can cancel after acceptance, but before pickup
+      }
+    } else {
+      // Delivery flow cancellation - can cancel up to shipped, but not after delivered
+      if (['accepted', 'to_ship', 'shipped'].includes(offer.status)) {
+        return offer.isSeller; // Only seller can cancel after acceptance, but before delivery
+      }
     }
     
     return false;
@@ -366,18 +470,44 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
     if (newStatus === 'accepted' || newStatus === 'rejected') {
       return offer.isSeller && offer.status === 'pending';
     }
-    if (newStatus === 'to_ship') {
-      return offer.isSeller && offer.status === 'accepted';
+    
+    // Pickup flow status checks
+    if (isPickup) {
+      if (newStatus === 'ready_for_pickup') {
+        return offer.isSeller && offer.status === 'accepted';
+      }
+      if (newStatus === 'picked_up') {
+        return offer.isSeller && offer.status === 'ready_for_pickup';
+      }
+      if (newStatus === 'received') {
+        // Only buyer can mark as received, and only when status is picked_up
+        if (!offer.isBuyer) return false;
+        if (offer.status !== 'picked_up') return false;
+        // Check for order issues
+        if (orderIssueStatus) return false;
+        return true;
+      }
+    } else {
+      // Delivery flow status checks
+      if (newStatus === 'to_ship') {
+        return offer.isSeller && offer.status === 'accepted';
+      }
+      if (newStatus === 'shipped') {
+        return offer.isSeller && offer.status === 'to_ship';
+      }
+      if (newStatus === 'delivered') {
+        return offer.isSeller && offer.status === 'shipped';
+      }
+      if (newStatus === 'received') {
+        // Only buyer can mark as received, and only when status is delivered
+        if (!offer.isBuyer) return false;
+        if (offer.status !== 'delivered') return false;
+        // Check for order issues
+        if (orderIssueStatus) return false;
+        return true;
+      }
     }
-    if (newStatus === 'shipped') {
-      return offer.isSeller && offer.status === 'to_ship';
-    }
-    if (newStatus === 'delivered') {
-      return offer.isSeller && offer.status === 'shipped';
-    }
-    if (newStatus === 'received') {
-      return offer.isBuyer && offer.status === 'delivered';
-    }
+    
     if (newStatus === 'completed') {
       // This is now handled automatically
       return false;
@@ -463,70 +593,78 @@ export function OfferStatusManager({ offer, onStatusUpdate, loading = false }: O
         </div>
 
         {/* Action Buttons */}
-        {availableTransitions.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-muted-foreground">Actions</div>
-            <div className="flex flex-wrap gap-2">
-              {availableTransitions.map((status) => {
-                const hasPermission = canUpdateStatus(status);
-                
-                // Only render buttons if user has permission
-                if (!hasPermission) {
-                  return null;
-                }
-                
-                if (status === 'cancelled') {
-                  return (
-                    <Button
-                      key={status}
-                      variant="outline"
-                      onClick={() => handleStatusChange(status)}
-                      disabled={loading}
-                      className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      <Ban className="w-4 h-4" />
-                      {offer.isSeller ? 'Cancel Order' : 'Cancel Offer'}
-                    </Button>
-                  );
-                }
+        {(() => {
+          // Collect all visible buttons
+          const visibleButtons: React.ReactNode[] = [];
+          
+          // Check available transitions
+          availableTransitions.forEach((status) => {
+            const hasPermission = canUpdateStatus(status);
+            if (!hasPermission) return;
+            
+            if (status === 'cancelled') {
+              visibleButtons.push(
+                <Button
+                  key={status}
+                  variant="outline"
+                  onClick={() => handleStatusChange(status)}
+                  disabled={loading}
+                  className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <Ban className="w-4 h-4" />
+                  {offer.isSeller ? 'Cancel Order' : 'Cancel Offer'}
+                </Button>
+              );
+            } else if (status === 'accepted') {
+              visibleButtons.push(
+                <Button
+                  key={status}
+                  onClick={() => handleStatusChange(status)}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Accept Offer
+                </Button>
+              );
+            } else if (status === 'rejected') {
+              visibleButtons.push(
+                <Button
+                  key={status}
+                  variant="outline"
+                  onClick={() => handleStatusChange(status)}
+                  disabled={loading}
+                  className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject Offer
+                </Button>
+              );
+            }
+          });
 
-                if (status === 'accepted') {
-                  return (
-                    <Button
-                      key={status}
-                      onClick={() => handleStatusChange(status)}
-                      disabled={loading}
-                      className="flex items-center gap-2"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Accept Offer
-                    </Button>
-                  );
-                }
+          // Check dynamic action button
+          if (canPerformAction(offer.status)) {
+            const actionButton = getActionButton(offer.status);
+            if (actionButton) {
+              visibleButtons.push(actionButton);
+            }
+          }
 
-                if (status === 'rejected') {
-                  return (
-                    <Button
-                      key={status}
-                      variant="outline"
-                      onClick={() => handleStatusChange(status)}
-                      disabled={loading}
-                      className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject Offer
-                    </Button>
-                  );
-                }
+          // Only show Actions section if there are visible buttons
+          if (visibleButtons.length === 0) {
+            return null;
+          }
 
-                return null;
-              })}
-
-              {/* Dynamic action button based on current status */}
-              {canPerformAction(offer.status) && getActionButton(offer.status)}
+          return (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">Actions</div>
+              <div className="flex flex-wrap gap-2">
+                {visibleButtons}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Report Order Issue for Buyers */}
         {canRequestCancellation() && (

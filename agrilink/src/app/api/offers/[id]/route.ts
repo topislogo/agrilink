@@ -47,7 +47,7 @@ export async function PUT(
     });
 
     // Validate status
-    const validStatuses = ['pending', 'accepted', 'rejected', 'to_ship', 'shipped', 'delivered', 'received', 'completed', 'cancelled', 'expired'];
+    const validStatuses = ['pending', 'accepted', 'rejected', 'to_ship', 'shipped', 'delivered', 'received', 'ready_for_pickup', 'picked_up', 'completed', 'cancelled', 'expired'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { message: 'Invalid status' },
@@ -101,12 +101,21 @@ export async function PUT(
     `;
     
     const [currentOffer] = currentOfferResult;
+    
+    // Helper function to detect if offer is pickup order
+    const isPickupOrder = (deliveryOptions: string[] | null): boolean => {
+      if (!deliveryOptions || deliveryOptions.length === 0) return false;
+      const pickupTerms = ['Pickup', 'pickup', 'Pick Up', 'pick up', 'Farm Pickup', 'farm pickup', 'Pick-up', 'pick-up'];
+      return deliveryOptions.some(option => pickupTerms.includes(option));
+    };
+    
+    const isPickup = isPickupOrder(currentOffer?.deliveryOptions || []);
 
     // Auto-complete logic: if buyer marks as "received", automatically complete the transaction
     let finalStatus = status;
     
     if (status === 'received') {
-      // For items marked as received by buyer, auto-complete
+      // For both delivery and pickup orders: items marked as received by buyer, auto-complete
       finalStatus = 'completed';
     }
 
@@ -185,6 +194,8 @@ export async function PUT(
       'shipped': { eventType: 'shipped', description: 'Shipped' },
       'delivered': { eventType: 'delivered', description: 'Delivered' },
       'received': { eventType: 'received', description: 'Received' },
+      'ready_for_pickup': { eventType: 'ready_to_pickup', description: 'Ready for Pickup' },
+      'picked_up': { eventType: 'picked_up', description: 'Picked Up' },
       'completed': { eventType: 'completed', description: 'Completed' },
       'cancelled': { eventType: 'cancelled', description: 'Cancelled' },
       'expired': { eventType: 'expired', description: 'Expired' }
@@ -236,6 +247,16 @@ export async function PUT(
           notificationType = 'offer_created'; // We'll use a custom type
           title = 'Ready to Ship';
           message = `Your order for "${productName}" is ready to ship`;
+          break;
+        case 'ready_for_pickup':
+          notificationType = 'offer_created';
+          title = 'Ready for Pickup';
+          message = `Your order for "${productName}" is ready for pickup`;
+          break;
+        case 'picked_up':
+          notificationType = 'offer_created';
+          title = 'Order Picked Up';
+          message = `Your order for "${productName}" has been picked up`;
           break;
         case 'shipped':
           notificationType = 'offer_created'; // We'll use a custom type
