@@ -1,5 +1,6 @@
-import { pgTable, uuid, text, boolean, timestamp, decimal, integer, jsonb, unique } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, boolean, timestamp, decimal, integer, jsonb, unique, varchar} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+// import { varchar } from 'drizzle-orm/mysql-core';
 
 // ============================================================================
 // LOOKUP TABLES (Master Data)
@@ -112,6 +113,9 @@ export const addresses = pgTable('addresses', {
   isDefault: boolean('isDefault').default(false),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow(),
+  postal_code: varchar('postal_code', { length: 50 }),
+  recipient_name:varchar('recipient_name', { length: 50 }),
+  is_active: boolean('is_active').default(true)
 });
 
 // User social table - Social media links

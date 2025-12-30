@@ -49,13 +49,13 @@ interface SimpleOfferModalProps {
     deliveryAddress?: {
       addressType: string;
       label: string;
-      fullName: string;
+      recipient_name: string;
       phone: string;
       addressLine1: string;
       addressLine2?: string;
       city: string;
       state: string;
-      postalCode?: string;
+      postal_code?: string;
     };
     deliveryOptions: string[];
     paymentTerms: string[];
@@ -113,13 +113,13 @@ export function SimpleOfferModal({
       setNewAddress({
         addressType: 'home',
         label: '',
-        fullName: '',
+        recipient_name: '',
         phone: '',
         addressLine1: '',
         addressLine2: '',
         city: '',
         state: '',
-        postalCode: '',
+        postal_code: '',
       });
     }
   }, [isOpen]);
@@ -209,13 +209,13 @@ export function SimpleOfferModal({
   const [newAddress, setNewAddress] = useState({
     addressType: 'home',
     label: '',
-    fullName: '',
+    recipient_name: '',
     phone: '',
     addressLine1: '',
     addressLine2: '',
     city: '',
     state: '', // This will store the region key (e.g., 'yangon', 'mandalay')
-    postalCode: ''
+    postal_code: ''
   });
 
   // Get available cities based on selected region (using myanmarRegions)
@@ -289,7 +289,7 @@ export function SimpleOfferModal({
       if (showNewAddress) {
         // Validate all new address fields
         const missingFields: string[] = [];
-        if (!newAddress.fullName) missingFields.push('Full Name');
+        if (!newAddress.recipient_name) missingFields.push('Full Name');
         if (!newAddress.phone) missingFields.push('Phone');
         if (!newAddress.addressLine1) missingFields.push('Address Line 1');
         if (!newAddress.city) missingFields.push('City');
@@ -356,13 +356,13 @@ export function SimpleOfferModal({
           deliveryAddress = {
             addressType: selectedAddress.addressType,
             label: selectedAddress.label || `${selectedAddress.addressType} address`,
-            fullName: selectedAddress.fullName || '',
+            recipient_name: selectedAddress.recipient_name || '',
             phone: selectedAddress.phone,
             addressLine1: selectedAddress.addressLine1,
             addressLine2: selectedAddress.addressLine2 || '',
             city: selectedAddress.city || '',
             state: selectedAddress.state || '',
-            postalCode: selectedAddress.postalCode || ''
+            postal_code: selectedAddress.postal_code || ''
           };
         }
       }
@@ -390,13 +390,13 @@ export function SimpleOfferModal({
       setNewAddress({
         addressType: 'home',
         label: '',
-        fullName: '',
+        recipient_name: '',
         phone: '',
         addressLine1: '',
         addressLine2: '',
         city: '',
         state: '',
-        postalCode: '',
+        postal_code: '',
       });
       onClose();
     } catch (error) {
@@ -649,7 +649,7 @@ export function SimpleOfferModal({
                                       selectedAddress?.addressLine2,
                                       selectedAddress?.city,
                                       selectedAddress?.state,
-                                      selectedAddress?.postalCode
+                                      selectedAddress?.postal_code
                                     ].filter(field => field && field !== '').join(', ')}
                                   </p>
                                   {selectedAddress?.phone && <p>📞 {selectedAddress.phone}</p>}
@@ -734,11 +734,11 @@ export function SimpleOfferModal({
                     
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="fullName" className="text-xs">Full Name <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="fullName" className="text-xs">Recipient Name <span className="text-red-500">*</span></Label>
                         <Input
                           id="fullName"
-                          value={newAddress.fullName}
-                          onChange={(e) => setNewAddress({...newAddress, fullName: e.target.value})}
+                          value={newAddress.recipient_name}
+                          onChange={(e) => setNewAddress({...newAddress, recipient_name: e.target.value})}
                           className="h-8"
                         />
                       </div>
@@ -822,8 +822,8 @@ export function SimpleOfferModal({
                       <Label htmlFor="postalCode" className="text-xs">Postal Code (Optional)</Label>
                       <Input
                         id="postalCode"
-                        value={newAddress.postalCode}
-                        onChange={(e) => setNewAddress({...newAddress, postalCode: e.target.value})}
+                        value={newAddress.postal_code}
+                        onChange={(e) => setNewAddress({...newAddress, postal_code: e.target.value})}
                         className="h-8"
                       />
                     </div>

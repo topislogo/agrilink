@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, sql } from '@/lib/db';
 import { addresses as addressesTable, locations } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 
 // GET /api/user/addresses - Get user's addresses
@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
       .select({
         id: addressesTable.id,
         userId: addressesTable.userId,
+        recipient_name: addressesTable.recipient_name,
+        postal_code: addressesTable.postal_code,
         locationId: addressesTable.locationId,
         addressLine1: addressesTable.addressLine1,
         addressLine2: addressesTable.addressLine2,
@@ -47,20 +49,24 @@ export async function GET(request: NextRequest) {
       })
       .from(addressesTable)
       .leftJoin(locations, eq(addressesTable.locationId, locations.id))
-      .where(eq(addressesTable.userId, user.userId))
-      .orderBy(desc(addressesTable.isDefault), desc(addressesTable.createdAt));
+      .where(
+          and(
+            eq(addressesTable.userId, user.userId),
+            eq(addressesTable.is_active, true)
+          )
+      ).orderBy(desc(addressesTable.isDefault), desc(addressesTable.createdAt));
 
     return NextResponse.json({
       addresses: addresses.map(addr => ({
         id: addr.id,
         addressType: addr.addressType || 'home',
         label: `${addr.addressType || 'home'} address`, // This will be updated when we store labels
-        fullName: '', // This will be updated when we store full names
+        recipient_name: addr.recipient_name, // This will be updated when we store full names
         addressLine1: addr.addressLine1,
         addressLine2: addr.addressLine2,
         city: addr.city || '',
         state: addr.region || '',
-        postalCode: '', // This will be updated when we store postal codes
+        postal_code: addr.postal_code || '', // This will be updated when we store postal codes
         phone: addr.phoneNumber,
         isDefault: addr.isDefault || false,
         location: addr.city && addr.region ? `${addr.city}, ${addr.region}` : null,
@@ -107,13 +113,13 @@ export async function POST(request: NextRequest) {
     const {
       addressType,
       label,
-      fullName,
+      recipient_name,
       phone,
       addressLine1,
       addressLine2,
       city,
       state,
-      postalCode,
+      postal_code,
       isDefault
     } = body;
 
@@ -165,6 +171,8 @@ export async function POST(request: NextRequest) {
         addressLine1: addressLine1,
         addressLine2: addressLine2 || null,
         phoneNumber: phone || null,
+        postal_code:postal_code || null,
+        recipient_name:recipient_name || null,
         isDefault: isDefault || false
       })
       .returning();
@@ -174,12 +182,12 @@ export async function POST(request: NextRequest) {
         id: newAddress.id,
         addressType: newAddress.addressType,
         label: label || `${addressType} address`,
-        fullName: fullName || '',
+        recipient_name: recipient_name || '',
         addressLine1: newAddress.addressLine1,
         addressLine2: newAddress.addressLine2,
         city: city,
         state: state,
-        postalCode: postalCode || '',
+        postal_code: postal_code || '',
         phone: newAddress.phoneNumber,
         isDefault: newAddress.isDefault,
         location: city && state ? `${city}, ${state}` : null,
