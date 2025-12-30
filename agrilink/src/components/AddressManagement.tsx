@@ -23,15 +23,14 @@ interface Address {
   id: string;
   addressType: 'home' | 'work' | 'other';
   label: string;
-  fullName: string;
+  recipient_name: string;
   phone: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
   state: string;
-  postalCode?: string;
+  postal_code?: string;
   isDefault: boolean;
-  isActive: boolean;
 }
 
 interface AddressManagementProps {
@@ -48,13 +47,13 @@ export function AddressManagement({ userId }: AddressManagementProps) {
   const [formData, setFormData] = useState({
     addressType: 'home' as 'home' | 'work' | 'other',
     label: '',
-    fullName: '',
+    recipient_name: '',
     phone: '',
     addressLine1: '',
     addressLine2: '',
     city: '',
     state: '',
-    postalCode: '',
+    postal_code: '',
     isDefault: false
   });
 
@@ -147,13 +146,13 @@ export function AddressManagement({ userId }: AddressManagementProps) {
     setFormData({
       addressType: address.addressType,
       label: address.label,
-      fullName: address.fullName,
+      recipient_name: address.recipient_name,
       phone: address.phone || '',
       addressLine1: address.addressLine1,
       addressLine2: address.addressLine2 || '',
       city: address.city,
       state: address.state,
-      postalCode: address.postalCode || '',
+      postal_code: address.postal_code || '',
       isDefault: address.isDefault
     });
     setShowAddForm(true);
@@ -185,13 +184,13 @@ export function AddressManagement({ userId }: AddressManagementProps) {
     setFormData({
       addressType: 'home',
       label: '',
-      fullName: '',
+      recipient_name: '',
       phone: '',
       addressLine1: '',
       addressLine2: '',
       city: '',
       state: '',
-      postalCode: '',
+      postal_code: '',
       isDefault: false
     });
   };
@@ -292,7 +291,7 @@ export function AddressManagement({ userId }: AddressManagementProps) {
                       </Badge>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p className="font-medium">{address.fullName}</p>
+                      <p className="font-medium">{address.recipient_name}</p>
                       <p>{address.addressLine1}</p>
                       {address.addressLine2 && address.addressLine2.trim() !== '' && <p>{address.addressLine2}</p>}
                       <p>
@@ -300,7 +299,7 @@ export function AddressManagement({ userId }: AddressManagementProps) {
                           .filter(field => field && field.trim() !== '')
                           .join(', ')}
                       </p>
-                      {address.postalCode && <p>{address.postalCode}</p>}
+                      {address.postal_code && <p>{address.postal_code}</p>}
                       {address.phone && <p>{address.phone}</p>}
                     </div>
                   </div>
@@ -383,8 +382,8 @@ export function AddressManagement({ userId }: AddressManagementProps) {
                       <Label htmlFor="fullName">Full Name *</Label>
                       <Input
                         id="fullName"
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        value={formData.recipient_name}
+                        onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
                         placeholder="Recipient's full name"
                         required
                       />
@@ -469,8 +468,8 @@ export function AddressManagement({ userId }: AddressManagementProps) {
                     <Label htmlFor="postalCode">Postal Code</Label>
                     <Input
                       id="postalCode"
-                      value={formData.postalCode}
-                      onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                      value={formData.postal_code}
+                      onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                       placeholder="Postal code (optional)"
                     />
                   </div>

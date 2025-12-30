@@ -26,19 +26,19 @@ export async function PUT(
     const {
       addressType,
       label,
-      fullName,
+      recipient_name,
       phone,
       addressLine1,
       addressLine2,
       city,
       state,
-      postalCode,
+      postal_code,
       country,
       isDefault
     } = body;
 
     // Validate required fields
-    if (!label || !fullName || !addressLine1 || !city || !state) {
+    if (!label || !recipient_name || !addressLine1 || !city || !state) {
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
@@ -49,7 +49,9 @@ export async function PUT(
         phone,
         addressLine1,
         addressLine2,
-        isDefault
+        isDefault,
+        recipient_name,
+        postal_code
       };
 
       let locationId = null;
@@ -115,7 +117,8 @@ export async function DELETE(
     const existing = await db.select().from(addressesTable).where(eq(addressesTable.id, addressId)).limit(1);
     if (existing.length > 0) {
       // Update existing record
-        await db.delete(addressesTable).where(eq(addressesTable.id, addressId));
+        // await db.delete(addressesTable).where(eq(addressesTable.id, addressId));
+        await db.update(addressesTable).set({ is_active: false }).where(eq(addressesTable.id, addressId));
       } 
       else{
         return NextResponse.json(
