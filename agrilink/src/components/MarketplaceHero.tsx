@@ -104,6 +104,7 @@ export function MarketplaceHero({
                 size="lg"
                 onClick={handleShowAddListing}
                 className="px-6 py-3 rounded-xl"
+                disabled={currentUser.isRestricted}
               >
                 List Your Products{" "}
                 <ArrowRight className="ml-2 w-4 h-4" />
