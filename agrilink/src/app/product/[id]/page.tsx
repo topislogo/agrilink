@@ -489,9 +489,11 @@ export default function ProductDetailsPage() {
                         </>
                       ) : (
                         <>
-                          <Button onClick={() => setShowChatPopup(true)} className="flex-1 h-9 text-sm">
+                          <Button onClick={() => setShowChatPopup(true)} disabled={!user || user.isRestricted} className="flex-1 h-9 text-sm">
                             <MessageCircle className="w-3 h-3 mr-1" />
-                            Contact Seller
+                            {!user ? 'Sign in to chat' : user.isRestricted
+                                ? 'Restricted Action'
+                                : 'Contact Seller'}
                           </Button>
                           <Button 
                             variant="outline" 

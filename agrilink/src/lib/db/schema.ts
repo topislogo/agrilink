@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, boolean, timestamp, decimal, integer, jsonb, unique, varchar} from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { is, relations } from 'drizzle-orm';
 // import { varchar } from 'drizzle-orm/mysql-core';
 
 // ============================================================================
@@ -80,6 +80,7 @@ export const users = pgTable('users', {
   emailVerificationToken: text('emailVerificationToken'),
   emailVerificationExpires: timestamp('emailVerificationExpires', { withTimezone: true }),
   pendingEmail: text('pendingEmail'), // Email change requests
+  isRestricted: boolean('isRestricted').default(false),
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
 });
@@ -205,6 +206,16 @@ export const userRatings = pgTable('user_ratings', {
 }, (table) => ({
   uniqueUserId: unique().on(table.userId),
 }));
+
+// User user report table
+export const userReports = pgTable('user_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  reportedId: uuid('reportedId').notNull().references(() => users.id),
+  reportedBy: uuid('reportedBy').notNull().references(() => users.id),
+  reportIssue: text('reportIssue'),
+  status: text('status').default('pending'),
+  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
+});
 
 // Note: userBusiness table removed for simplicity
 // Business accounts are directly linked to users via businessDetails.userId

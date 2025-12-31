@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from "next/navigation";
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Alert, AlertDescription } from './ui/alert';
 import { 
-  CheckCircle, 
-  XCircle, 
   Clock, 
-  User, 
-  Building2, 
-  MapPin, 
-  FileText, 
   Eye, 
   Shield, 
   AlertTriangle, 
@@ -20,9 +14,7 @@ import {
   Package, 
   DollarSign,
   TrendingUp,
-  Ban,
   RefreshCw,
-  Smartphone
 } from 'lucide-react';
 
 interface AdminStats {
@@ -66,6 +58,8 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
     { id: '1', amount: 150, buyer: 'John Doe', seller: 'Jane Smith', date: '2 hours ago' },
     { id: '2', amount: 300, buyer: 'Mike Johnson', seller: 'John Doe', date: '4 hours ago' },
   ]);
+
+  const router = useRouter();
 
   // Function to fetch admin data from Neon database
   const fetchAdminData = async () => {
@@ -337,6 +331,7 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
                 <Button 
                   variant="outline" 
                   className="h-20 flex-col gap-2"
+                  onClick={() => router.push('/manage-users')}
                 >
                   <Users className="h-6 w-6" />
                   <span className="text-sm">Manage Users</span>
@@ -437,7 +432,13 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
                           </div>
                         </div>
                         <div className="flex gap-1 ml-2">
-                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => { 
+                            if (user.user_type === 'buyer') {
+                                router.push(`/user/${user.id}`)
+                            } else {
+                                router.push(`/seller/${user.id}`)
+                            }
+                          }}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button size="sm" variant="outline" className="h-8 w-8 p-0">

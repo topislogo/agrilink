@@ -409,7 +409,22 @@ export default function MessagesPage() {
               {(() => {
                 const conversation = conversations.find(c => c.id === selectedConversation);
                 if (!conversation) return null;
-                
+
+                if (user?.isRestricted) {
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                      <AlertTriangle className="w-10 h-10 text-red-500 mb-3" />
+                      <h2 className="text-lg font-semibold mb-2">Your account is restricted</h2>
+                      <p className="text-sm text-gray-600 mb-4">
+                        You cannot send or receive messages at the moment.
+                      </p>
+                      <Button onClick={() => setSelectedConversation(null)} variant="outline">
+                        Close
+                      </Button>
+                    </div>
+                  );
+                }            
+
                 return (
                   <ChatInterface
                     otherPartyName={conversation.otherParty.name}

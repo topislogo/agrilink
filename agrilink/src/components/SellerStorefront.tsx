@@ -9,7 +9,7 @@ import { Badge } from "./ui/badge";
 import { S3Avatar } from "./S3Avatar";
 import { UserBadge, PublicVerificationStatus, getUserVerificationLevel, getUserAccountType, AccountTypeBadge } from "./UserBadgeSystem";
 import { Separator } from "./ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ReviewsService, type SellerStats } from "../services/reviews";
 import { ReviewSliderModal } from "./ReviewSliderModal";
 import { analyticsAPI } from "../services/analytics";
@@ -44,8 +44,12 @@ import {
   Instagram,
   Music,
   Video,
-  Globe
+  Globe,
+  FileText
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectValue } from './ui/select';
+import { SelectTrigger } from '@radix-ui/react-select';
+import { cn } from '@/lib/utils';
 
 interface Product {
   id: string;
@@ -114,6 +118,17 @@ interface SellerStorefrontProps {
   imageMessage?: { type: 'success' | 'error', text: string } | null;
 }
 
+interface Report {
+  id: string;
+  reportedId: string;
+  reportedBy: string;
+  reportedByName?: string;
+  reportedByEmail?: string;
+  reportIssue: string;
+  status: string;
+  createdAt: string;
+}
+
 export function SellerStorefront({ 
   seller, 
   products, 
@@ -137,6 +152,9 @@ export function SellerStorefront({
   const [editingFarmName, setEditingFarmName] = useState(false);
   const [farmName, setFarmName] = useState(seller.businessName || seller.name);
   const [savingFarmName, setSavingFarmName] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [reportIssue, setReportIssue] = useState('');
+  const [reports, setReports] = useState<Report[]>([]);
   
   // State for seller statistics
   const [sellerStats, setSellerStats] = useState<SellerStats | null>(null);
@@ -199,6 +217,16 @@ export function SellerStorefront({
 
     fetchSellerStats();
   }, [seller.id]);
+
+  useEffect(() => {
+      if (currentUser?.userType !== "admin") return;
+      try {
+        fetchReports();
+      } catch (error) {
+        console.error("❌ Error fetching reports:", error);
+      }
+  }, []);
+
 
   // Update storefront data when seller prop changes (for real-time profile updates)
   // Use a ref to track if we just made an optimistic update to avoid overwriting it
@@ -438,6 +466,86 @@ export function SellerStorefront({
       maximumFractionDigits: 2
     }).format(price);
   };
+
+  const handleReports = async () => {
+    if (!reportIssue.trim()) {
+      alert('Please provide a reason for your complaint.');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/user/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          reportIssue: reportIssue,
+          reportedId: seller.id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message || 'Report submitted successfully. Our support team will review your case. (Note: Full complaint resolution system is in post-MVP development)');
+        setOpen(false);
+        setReportIssue('');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to submit report. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      alert('Failed to submit report. Please try again or contact support directly.');
+    }
+  }
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`/api/user/report/${seller.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await response.json();
+      setReports(data.reports || []);
+    }catch (error) {
+      console.error('Error fetching report:', error);
+    }
+  }
+
+  const handleStatusChange = async (reportId: string, newStatus: string) => {
+    try {
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === reportId ? { ...r, status: newStatus } : r
+        )
+      );
+
+      const res = await fetch(`/api/user/report/${reportId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", 'Authorization': `Bearer ${localStorage.getItem('token')}`},
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+    } catch (err) {
+      console.error("❌ Error updating report status:", err);
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === reportId ? { ...r, status: r.status } : r
+        )
+      );
+    }
+  };
+
 
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products : [];
@@ -1274,7 +1382,7 @@ export function SellerStorefront({
               </CardContent>
             </Card>
           )}
-
+          {!isOwnStorefront && currentUser.id != null && !currentUser.isRestricted && currentUser.userType != 'admin' && (<Button variant="ghost" onClick={() => setOpen(true)}>Report a problem with this seller.</Button>)}
         </div>
 
         {/* Products and Description */}
@@ -1552,11 +1660,17 @@ export function SellerStorefront({
                                 className="w-full h-8 text-xs mt-2"
                                 onClick={(e) => {
                                   e.stopPropagation(); // Prevent card click
+                                  if (currentUser.isRestricted) {
+                                    return;
+                                  }
                                   onChat(product.id);
                                 }}
+                                disabled={!currentUser || currentUser.isRestricted}
                               >
-                                <MessageCircle className="w-3 h-3 mr-1" />
-                                {currentUser ? 'Chat with seller' : 'Sign in to chat'}
+                                <MessageCircle className="w-3 h-3 mr-1" /> 
+                                {!currentUser ? 'Sign in to chat' : currentUser.isRestricted
+                                ? 'You are restricted'
+                                : 'Chat with seller'}
                               </Button>
                             )}
 
@@ -1587,6 +1701,73 @@ export function SellerStorefront({
           </Card>
         </div>
       </div>
+      {currentUser.userType === 'admin' && (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle>
+              Reports ({reports.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {reports.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No reports found for this seller</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+              {reports.map((report) => (
+              <Card key={report.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between gap-10">
+                    <div className="flex-1">
+                      <div className="mb-4">
+                        <p className="text-sm text-gray-600 mb-1">Report Reason</p>
+                        <p className="bg-gray-50 p-3 rounded-md">{report.reportIssue}</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Reported By</p>
+                          <p className="font-medium">{report.reportedByName}</p>
+                          <p className="text-xs text-gray-500">{report.reportedByEmail}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Clock className="w-4 h-4" />
+                        <span>Filed on {new Date(report.createdAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <Select
+                      defaultValue={report.status}
+                      onValueChange={(newStatus) => handleStatusChange(report.id, newStatus)}
+                    >
+                      <SelectTrigger className={cn(
+                          "w-40 h-10 rounded-md border bg-white shadow-sm px-3 text-sm transition",
+                          {
+                            "border-yellow-500": report.status === "pending",
+                            "border-green-600": report.status === "approved",
+                            "border-red-600": report.status === "rejected",
+                          }
+                        )}>
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Review Slider Modal */}
       {sellerStats && sellerStats.recentReviews && (
@@ -1600,6 +1781,48 @@ export function SellerStorefront({
           totalReviews={sellerStats.totalReviews}
           averageRating={sellerStats.averageRating}
         />
+      )}
+
+      {open === true && (
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Report an Issue</AlertDialogTitle>
+              <AlertDialogDescription>
+                Please describe the issue you encountered with this seller. Our team will investigate your report.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Report Details (required)
+                </label>
+                <textarea
+                  value={reportIssue}
+                  onChange={(e) => setReportIssue(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                  rows={4}
+                  placeholder="Please provide details about the issue (e.g., inappropriate behavior, unfair cancellation, misleading information, etc.)"
+                  required
+                />
+                {!reportIssue.trim() && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Please provide details before submitting your report.
+                  </p>
+                )}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  await handleReports();
+                  setOpen(false);
+                }}
+              >
+                Submit Report
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

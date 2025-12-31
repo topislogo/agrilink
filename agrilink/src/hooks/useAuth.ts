@@ -6,6 +6,7 @@ export interface User {
   name: string;
   userType: 'farmer' | 'trader' | 'buyer' | 'admin';
   accountType?: 'individual' | 'business';
+  isRestricted?: boolean;
   location: string;
   region?: string;
   verified: boolean;

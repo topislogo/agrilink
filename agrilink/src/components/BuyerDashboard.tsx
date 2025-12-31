@@ -10,6 +10,7 @@ interface BuyerUser {
   name: string;
   email: string;
   userType: "buyer";
+  isRestricted?: boolean;
   location: string;
   region: string;
   phone?: string;
@@ -407,10 +408,13 @@ export function BuyerDashboard({
                     className="w-full md:w-auto"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (user.isRestricted) {
+                        return;
+                      }
                       saved.product && onStartChat(saved.productId, saved.product.seller.id)
                     }
                     }
-                    disabled={!saved.product}
+                    disabled={!saved.product || user.isRestricted}
                   >
                     <MessageCircle className="w-4 h-4 mr-1" />
                     Contact Seller
