@@ -410,7 +410,7 @@ export default function DashboardPage() {
         {isChatOpen && selectedProduct && selectedSeller && user && (
           <div className="fixed bottom-4 right-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-96 h-[500px] flex flex-col border border-gray-200">
-              <ChatInterface
+              <ChatInterface key={`${selectedProduct.id}-${selectedSeller.id}`}
                 otherPartyName={selectedSeller.name}
                 otherPartyType={selectedSeller.userType}
                 otherPartyAccountType={selectedSeller.accountType || 'individual'}
