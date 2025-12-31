@@ -657,6 +657,7 @@ export default function OfferDetailsPage() {
                   onClick={handleChatWithUser}
                   className="w-full"
                   variant="outline"
+                  disabled={user.isRestricted}
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   {isBuyer ? 'Contact Seller' : 'Contact Buyer'}

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     
     const [userProfile] = await dbSql`
       SELECT 
-        u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."createdAt",
+        u.id, u.email, u.name, u."userType", u."accountType", u."emailVerified", u."pendingEmail", u."isRestricted", u."createdAt",
         bd."businessName", bd."businessDescription", bd."businessLicenseNumber",
         l.city, l.region, up.phone, up."profileImage", up."storefrontImage", up.website as "profileWebsite",
         sd.description as "storefrontDescription",
@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
         emailVerified: userProfile.emailVerified,
         userType: userProfile.userType,
         accountType: userProfile.accountType,
+        isRestricted: userProfile.isRestricted,
         location: userProfile.city && userProfile.region 
           ? `${userProfile.city}, ${userProfile.region}` 
           : userProfile.city || userProfile.region || '',

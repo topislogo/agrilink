@@ -193,7 +193,7 @@ export function ProductCard({
             variant="outline" 
             size="sm" 
             className={`flex-1 h-8 text-xs`}
-            disabled={!currentUser}
+            disabled={!currentUser || currentUser.isRestricted}
             onClick={(e) => {
               e.stopPropagation();
               if (!currentUser) {
@@ -201,11 +201,16 @@ export function ProductCard({
                 window.location.href = '/login';
                 return;
               }
+              if (currentUser.isRestricted) {
+                return;
+              }
               onChatClick(product.seller.id);
             }}
           >
             <MessageCircle className="w-3 h-3 mr-1" />
-            {!currentUser ? 'Sign in to chat' : 'Chat'}
+            {!currentUser ? 'Sign in to chat' : currentUser.isRestricted
+              ? 'You are restricted'
+              : 'Chat'}
           </Button>
         )}
       </CardFooter>
