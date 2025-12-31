@@ -23,8 +23,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEmail = email?.toLowerCase().trim();
+
     // Get user from database with all related data using Drizzle (simplified structure)
-    console.log('🔍 Querying database for user:', email);
+    console.log('🔍 Querying database for user:', normalizedEmail);
     const userResult = await db
       .select({
         id: users.id,
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
       .leftJoin(locations, eq(userProfiles.locationId, locations.id))
       .leftJoin(userVerification, eq(users.id, userVerification.userId))
       .leftJoin(userRatings, eq(users.id, userRatings.userId))
-      .where(eq(users.email, email))
+      .where(eq(users.email, normalizedEmail))
       .limit(1);
 
     console.log('👤 User query result:', userResult.length > 0 ? 'User found' : 'No user found');
