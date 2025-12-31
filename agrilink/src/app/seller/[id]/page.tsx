@@ -245,7 +245,7 @@ export default function SellerStorefrontPage() {
       {isChatOpen && selectedProduct && (
         <div className="fixed bottom-4 right-4 z-50">
           <div className="bg-white rounded-lg shadow-2xl w-96 h-[500px] flex flex-col border border-gray-200">
-            <ChatInterface
+            <ChatInterface key={`${selectedProduct.id}-${seller.id}`}
               otherPartyName={seller.name}
               otherPartyType={seller.userType}
               otherPartyAccountType={seller.accountType}
