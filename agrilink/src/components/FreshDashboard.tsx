@@ -484,7 +484,7 @@ export function FreshDashboard({
             console.log('✨ Quick Add Product clicked');
             onAddListing?.();
           }}
-          disabled={!user}
+          disabled={!user || user.isRestricted}
           className={`h-12 justify-start gap-3 bg-primary hover:bg-primary/90`}>
           <Plus className="w-5 h-5" />
           Add New Product
@@ -555,6 +555,7 @@ export function FreshDashboard({
                     console.log('🎯 Add First Product clicked');
                     onAddListing?.();
                   }}
+                  disabled={!user || user.isRestricted}
                   size="lg"
                   className="h-12 px-8"
                 >
