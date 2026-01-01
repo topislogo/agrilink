@@ -36,24 +36,9 @@ const getDatabaseUrl = () => {
 
 let databaseUrl = getDatabaseUrl();
 
-<<<<<<< Updated upstream
-// Remove channel_binding parameter as it's not supported by Neon serverless driver
-// The serverless driver uses HTTP/WebSocket, not direct TCP connections
-if (databaseUrl.includes('channel_binding=')) {
-  // Remove channel_binding parameter (can be ?channel_binding= or &channel_binding=)
-  databaseUrl = databaseUrl.replace(/[?&]channel_binding=[^&]*/g, (match) => {
-    // If it starts with ?, replace with ?, otherwise remove the whole match
-    return match.startsWith('?') ? '?' : '';
-  });
-  // Clean up any double question marks, ampersands, or trailing separators
-  databaseUrl = databaseUrl.replace(/\?\?+/g, '?').replace(/&+/g, '&').replace(/[?&]$/, '');
-  // If we removed a ? but there are still query params, ensure we have a ?
-  if (databaseUrl.includes('&') && !databaseUrl.includes('?')) {
-    const [base, ...params] = databaseUrl.split('&');
-    databaseUrl = `${base}?${params.join('&')}`;
-  }
-}
-=======
+// Remove surrounding quotes if present (common in .env files)
+databaseUrl = databaseUrl.trim().replace(/^["']|["']$/g, '');
+
 // Remove parameters not supported by Neon serverless driver
 // The serverless driver uses HTTP/WebSocket, not direct TCP connections
 // Remove channel_binding and sslmode parameters
@@ -72,12 +57,19 @@ if (modified) {
   databaseUrl = databaseUrl.replace(/\?\?+/g, '?').replace(/&+/g, '&').replace(/[?&]$/, '');
   console.log('🔧 Cleaned connection string for Neon serverless compatibility');
 }
->>>>>>> Stashed changes
 
 console.log('🔗 Database URL:', databaseUrl.includes('ep-weathered-sea') ? '✅ DEVELOPMENT' : '✅ PRODUCTION/STAGING');
+console.log('🔗 Cleaned URL (first 80 chars):', databaseUrl.substring(0, 80) + '...');
 
-// Initialize Neon connection
-const sql = neon(databaseUrl);
+// Initialize Neon connection with error handling
+let sql;
+try {
+  sql = neon(databaseUrl);
+} catch (error) {
+  console.error('❌ Failed to initialize Neon connection:', error);
+  console.error('❌ URL that failed:', databaseUrl);
+  throw error;
+}
 
 // Initialize Drizzle with normalized schema
 export const db = drizzle(sql, { schema });
