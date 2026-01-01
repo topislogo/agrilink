@@ -36,6 +36,7 @@ const getDatabaseUrl = () => {
 
 let databaseUrl = getDatabaseUrl();
 
+<<<<<<< Updated upstream
 // Remove channel_binding parameter as it's not supported by Neon serverless driver
 // The serverless driver uses HTTP/WebSocket, not direct TCP connections
 if (databaseUrl.includes('channel_binding=')) {
@@ -52,6 +53,26 @@ if (databaseUrl.includes('channel_binding=')) {
     databaseUrl = `${base}?${params.join('&')}`;
   }
 }
+=======
+// Remove parameters not supported by Neon serverless driver
+// The serverless driver uses HTTP/WebSocket, not direct TCP connections
+// Remove channel_binding and sslmode parameters
+const paramsToRemove = ['channel_binding', 'sslmode'];
+let modified = false;
+
+for (const param of paramsToRemove) {
+  if (databaseUrl.includes(`${param}=`)) {
+    databaseUrl = databaseUrl.replace(new RegExp(`[?&]${param}=[^&]*`, 'g'), '');
+    modified = true;
+  }
+}
+
+if (modified) {
+  // Clean up any double question marks, ampersands, or trailing separators
+  databaseUrl = databaseUrl.replace(/\?\?+/g, '?').replace(/&+/g, '&').replace(/[?&]$/, '');
+  console.log('🔧 Cleaned connection string for Neon serverless compatibility');
+}
+>>>>>>> Stashed changes
 
 console.log('🔗 Database URL:', databaseUrl.includes('ep-weathered-sea') ? '✅ DEVELOPMENT' : '✅ PRODUCTION/STAGING');
 
