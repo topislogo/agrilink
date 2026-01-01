@@ -46,3 +46,8 @@ next-env.d.ts
 .env*.local
 migrate-s3*
 fix-s3*
+
+# Local test case documents (not tracked in git)
+docs/TEST_CASES.md
+docs/NFR_TEST_CASES.md
+docs/NFR_CODE_REVIEW_CHECKLIST.md

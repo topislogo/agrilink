@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { UserProfile } from "@/components/UserProfile";
 import { SellerStorefront } from "@/components/SellerStorefront";
 import { ChatInterface } from "@/components/ChatInterface";
@@ -385,6 +386,7 @@ export default function UserProfilePage() {
           </div>
         </div>
       )}
+      <AppFooter />
       <Toaster />
     </div>
   );

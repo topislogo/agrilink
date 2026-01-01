@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { SellerStorefront } from "@/components/SellerStorefront";
 import { ChatInterface } from "@/components/ChatInterface";
 import { updateStorefront } from "@/lib/storefront-utils";
@@ -281,6 +282,7 @@ export default function SellerStorefrontPage() {
           </div>
         </div>
       )}
+      <AppFooter />
       <Toaster />
     </div>
   );

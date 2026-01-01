@@ -10,6 +10,7 @@ import { getRelativeTime } from "@/utils/dates";
 import { UserBadge, getUserVerificationLevel, getUserAccountType } from "@/components/UserBadgeSystem";
 import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { ChatInterface } from "@/components/ChatInterface";
 import { S3Image } from "@/components/S3Image";
 import { 
@@ -75,6 +76,18 @@ export default function ProductDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
+  
+  // Get return URL from query params
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Check for returnUrl in query params
+    const searchParams = new URLSearchParams(window.location.search);
+    const returnUrlParam = searchParams.get('returnUrl');
+    if (returnUrlParam) {
+      setReturnUrl(returnUrlParam);
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -91,6 +104,26 @@ export default function ProductDetailsPage() {
 
     loadProduct();
   }, [productId]);
+
+  // Track product view
+  useEffect(() => {
+    const trackProductView = async () => {
+      if (!productId) return;
+      
+      try {
+        const { analyticsAPI } = await import('@/services/analytics');
+        await analyticsAPI.trackProductView(productId, user?.id);
+        console.log('📊 Product view tracked for:', productId);
+      } catch (error) {
+        console.error('❌ Error tracking product view:', error);
+      }
+    };
+
+    // Track view after product is loaded
+    if (product && !isLoading) {
+      trackProductView();
+    }
+  }, [product, productId, user?.id, isLoading]);
 
   const loadProduct = async () => {
     try {
@@ -278,7 +311,19 @@ export default function ProductDetailsPage() {
         {/* Header */}
         <div className="space-y-4">
           {/* Back button row */}
-          <Button variant="ghost" onClick={() => router.push("/")} className="h-9 px-3 -ml-3">
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              if (returnUrl) {
+                router.push(returnUrl);
+              } else if (document.referrer && document.referrer !== window.location.href) {
+                router.back();
+              } else {
+                router.push("/");
+              }
+            }} 
+            className="h-9 px-3 -ml-3"
+          >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -838,6 +883,7 @@ export default function ProductDetailsPage() {
           </div>
         </div>
       )}
+      <AppFooter />
     </div>
   );
 }

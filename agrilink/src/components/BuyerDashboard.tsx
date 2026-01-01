@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Alert, AlertDescription } from "./ui/alert";
-import { Heart, MessageCircle, TrendingDown, Bell, Eye, Shield, CheckCircle, MessageSquare, Store, XCircle } from "lucide-react";
+import { Heart, MessageCircle, Eye, Shield, CheckCircle, MessageSquare, Store, XCircle } from "lucide-react";
 import { Product } from "../data/products";
 
 interface BuyerUser {
@@ -69,13 +69,11 @@ export function BuyerDashboard({
     });
   }, [allProducts, savedProducts]);
 
-  // Simple dashboard stats focused on saved products
+  // Simple dashboard stats focused on saved products (MVP - price alerts removed)
   const dashboardStats = useMemo(() => {
     const savedProductsCount = savedProducts.length;
-    const priceAlertsActive = savedProducts.filter(sp => sp.alerts?.priceAlert).length;
-    const priceDropsDetected = savedProductsWithData.filter(sp => sp.currentPrice < sp.priceWhenSaved).length;
     return {
-      savedProductsCount, priceAlertsActive, priceDropsDetected
+      savedProductsCount
     };
   }, [savedProducts]);
 
@@ -260,7 +258,7 @@ export function BuyerDashboard({
                     <span className="font-semibold text-red-700">Boost Your Buying Experience!</span>
                   </div>
                   <p className="text-sm text-red-600">
-                    Verified buyers get priority access to premium sellers and exclusive deals.
+                    Verification boosts trust between you and sellers, making transactions smoother and more reliable.
                   </p>
                 </div>
                 <Button 
@@ -279,86 +277,47 @@ export function BuyerDashboard({
         );
       })()}
 
-      {/* Simple Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+      {/* Stats and Quick Actions - Inline Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Saved Products Stat Card - Active State */}
+        <Card className="border-primary/50 bg-primary/5">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Heart className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                <Heart className="w-5 h-5 text-primary fill-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Saved Products</p>
-                <p className="text-xl">{dashboardStats.savedProductsCount}</p>
+                <p className="text-xl font-semibold text-primary">{dashboardStats.savedProductsCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Bell className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Price Alerts</p>
-                <p className="text-xl text-orange-600">{dashboardStats.priceAlertsActive}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Price Drops</p>
-                <p className="text-xl text-green-600">{dashboardStats.priceDropsDetected}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Browse Marketplace Button - Inactive until hover */}
         <Button 
           onClick={() => {
             console.log('🏪 Browse Marketplace clicked');
             onGoToMarketplace?.();
           }}
-          className="h-12 justify-start gap-3 bg-primary hover:bg-primary/90"
+          variant="outline"
+          className="h-full justify-start gap-3 hover:bg-primary hover:text-white hover:border-primary transition-colors"
         >
           <Store className="w-5 h-5" />
           Browse Marketplace
         </Button>
         
+        {/* Check Messages Button - Inactive until hover */}
         <Button 
           onClick={() => {
             console.log('💬 Check Messages clicked');
             onViewMessages?.();
           }}
           variant="outline"
-          className="h-12 justify-start gap-3"
+          className="h-full justify-start gap-3 hover:bg-primary hover:text-white hover:border-primary transition-colors"
         >
           <MessageSquare className="w-5 h-5" />
           Check Messages
-        </Button>
-        
-        <Button 
-          onClick={() => {
-            console.log('🔔 Price Alerts clicked');
-            // Could open a price alerts management modal
-          }}
-          variant="outline"
-          className="h-12 justify-start gap-3"
-        >
-          <Bell className="w-5 h-5" />
-          Manage Alerts
         </Button>
       </div>
 
@@ -370,7 +329,7 @@ export function BuyerDashboard({
             Your Saved Products ({savedProductsWithData.length})
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Track prices and get alerts on products you're interested in
+            Products you've saved for easy access
           </p>
         </CardHeader>
         <CardContent>

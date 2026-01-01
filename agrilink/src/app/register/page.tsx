@@ -9,10 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { CountryCodeSelector } from "@/components/CountryCodeSelector";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 import { validatePassword } from "@/utils/password-strength";
-import { Eye, EyeOff, Leaf, Mail, Lock, User, Phone, MapPin, Building2, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Leaf, Mail, Lock, User, Phone, MapPin, Building2, ArrowLeft, FileText } from "lucide-react";
+import Link from "next/link";
 import { myanmarRegions } from "@/utils/regions";
 
 export default function RegisterPage() {
@@ -28,11 +30,15 @@ export default function RegisterPage() {
     userType: '',
     accountType: '', // 'individual' or 'business'
     region: '',
-    location: '' // This will be the city/town
+    location: '', // This will be the city/town
+    
+    // Terms and Privacy
+    acceptedTerms: false
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [termsError, setTermsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -103,14 +109,39 @@ export default function RegisterPage() {
       return false;
     }
 
+    // Terms acceptance validation
+    if (!formData.acceptedTerms) {
+      setTermsError(true);
+      // Clear general error to show only inline message
+      setError('');
+      // Scroll to terms section for better UX
+      setTimeout(() => {
+        const termsCard = document.getElementById('terms-card');
+        if (termsCard) {
+          termsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return false;
+    } else {
+      setTermsError(false);
+    }
+
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    e.stopPropagation(); // Prevent any default browser validation
     
-    if (!validateForm()) return;
+    // Clear all errors first
+    setError('');
+    setTermsError(false);
+    
+    // Validate form - this will set appropriate error states
+    if (!validateForm()) {
+      // Prevent form submission
+      return;
+    }
     
     // Prevent duplicate submissions
     if (isLoading) return;
@@ -453,7 +484,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Registration Form */}
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8" noValidate>
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -486,6 +517,67 @@ export default function RegisterPage() {
             </CardContent>
           </Card>
 
+          {/* Terms and Privacy Consent */}
+          <Card id="terms-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="w-5 h-5" />
+                Terms & Privacy
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                termsError ? 'border-orange-500 bg-orange-50' : 'border-transparent'
+              }`}>
+                <input
+                  type="checkbox"
+                  id="acceptTerms"
+                  checked={formData.acceptedTerms}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, acceptedTerms: e.target.checked }));
+                    if (e.target.checked) {
+                      setTermsError(false);
+                      setError('');
+                    }
+                  }}
+                  className={`mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary ${
+                    termsError ? 'border-orange-500' : ''
+                  }`}
+                />
+                <div className="flex-1">
+                  <label htmlFor="acceptTerms" className="text-sm text-muted-foreground cursor-pointer block">
+                    I have read and agree to the{' '}
+                    <Link href="/terms" target="_blank" className="text-primary hover:underline font-medium">
+                      Terms of Service
+                    </Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" target="_blank" className="text-primary hover:underline font-medium">
+                      Privacy Policy
+                    </Link>
+                    <span className="text-red-500"> *</span>
+                  </label>
+                  {termsError && (
+                    <div className="mt-2 flex items-start gap-2 p-2 bg-orange-50 border border-orange-200 rounded-md">
+                      <span className="text-orange-600 mt-0.5 font-bold">⚠</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-orange-800">
+                          Terms Acceptance Required
+                        </p>
+                        <p className="text-sm text-orange-700 mt-1">
+                          Please accept the Terms of Service and Privacy Policy to create your account. You can review them by clicking the links above.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                By creating an account, you acknowledge that AgriLink is a marketplace facilitator and not a party to transactions. 
+                You agree to perform due diligence before entering into transactions.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Submit Actions */}
           <Card>
             <CardContent className="pt-6">
@@ -512,6 +604,7 @@ export default function RegisterPage() {
           </Card>
         </form>
       </div>
+      <AppFooter />
     </div>
   );
 }

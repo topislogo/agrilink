@@ -9,11 +9,8 @@ import {
   Shield, 
   AlertTriangle, 
   Users, 
-  Flag, 
   Settings, 
   Package, 
-  DollarSign,
-  TrendingUp,
   RefreshCw,
 } from 'lucide-react';
 
@@ -21,8 +18,6 @@ interface AdminStats {
   totalUsers: number;
   pendingVerifications: number;
   totalProducts: number;
-  activeTransactions: number;
-  platformRevenue: number;
   pendingDisputes?: number;
 }
 
@@ -46,8 +41,6 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
     totalUsers: 0,
     pendingVerifications: 0,
     totalProducts: 0,
-    activeTransactions: 0,
-    platformRevenue: 0,
   });
 
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
@@ -118,8 +111,6 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
           totalUsers: statsData.totalUsers || 0,
           pendingVerifications,
           totalProducts: statsData.totalProducts || 0,
-          activeTransactions: 156, // Keep mock data for now
-          platformRevenue: 45670, // Keep mock data for now
         });
 
         // Update recent users
@@ -245,45 +236,6 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
               </CardContent>
             </Card>
           </div>
-
-          {/* Second row - 3 cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="h-4 w-4 text-purple-600" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Transactions</p>
-                    <p className="text-2xl font-bold">{stats.activeTransactions}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Flag className="h-4 w-4 text-red-600" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Reported Content</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.reportedContent}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-indigo-600" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Platform Revenue</p>
-                    <p className="text-2xl font-bold">{stats.platformRevenue.toLocaleString()} MMK</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         {/* Quick Actions - After statistics */}
@@ -297,7 +249,7 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
               <CardDescription>Common admin tasks</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <Button 
                   variant="outline" 
                   className="h-20 flex-col gap-2"
@@ -324,6 +276,7 @@ export function AdminDashboard({ currentAdmin, onBack, onNavigateToVerification,
                 <Button 
                   variant="outline" 
                   className="h-20 flex-col gap-2"
+                  onClick={() => router.push('/admin/products')}
                 >
                   <Package className="h-6 w-6" />
                   <span className="text-sm">Moderate Products</span>

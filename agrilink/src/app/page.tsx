@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { MarketplaceHero } from "@/components/MarketplaceHero";
 import { SearchFilters } from "@/components/SearchFilters";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton } from "@/components/ProductCardSkeleton";
-import { AppFooter } from "@/components/AppFooter";
 import { Pagination } from "@/components/Pagination";
 import { ChatInterface } from "@/components/ChatInterface";
 
@@ -399,6 +399,7 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      <AppFooter />
     </div>
   );
 }
