@@ -17,6 +17,14 @@ export function AppFooter() {
   const handleGoToFAQ = () => {
     router.push("/faq");
   };
+
+  const handleGoToTerms = () => {
+    router.push("/terms");
+  };
+
+  const handleGoToPrivacy = () => {
+    router.push("/privacy");
+  };
   return (
     <footer className="border-t bg-card mt-8">
       <div className="w-full max-w-5xl mx-auto px-4 py-6">
@@ -89,7 +97,7 @@ export function AppFooter() {
           </div>
 
           {/* Footer Links */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap justify-center">
             <button
               onClick={handleGoToAbout}
               className="hover:text-primary transition-colors duration-200"
@@ -109,6 +117,20 @@ export function AppFooter() {
               className="hover:text-primary transition-colors duration-200"
             >
               FAQ
+            </button>
+            <span>•</span>
+            <button
+              onClick={handleGoToTerms}
+              className="hover:text-primary transition-colors duration-200"
+            >
+              Terms of Service
+            </button>
+            <span>•</span>
+            <button
+              onClick={handleGoToPrivacy}
+              className="hover:text-primary transition-colors duration-200"
+            >
+              Privacy Policy
             </button>
           </div>
         </div>
