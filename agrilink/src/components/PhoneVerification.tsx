@@ -51,7 +51,7 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
   const [isTwilioConfigured, setIsTwilioConfigured] = useState(false);
   const [verificationSid, setVerificationSid] = useState<string | null>(null);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [devOtpCode, setDevOtpCode] = useState<string | null>(null); // Store OTP from API response for development mode
+  const [mvpOtpCode, setMvpOtpCode] = useState<string | null>(null); // Store OTP from API response for MVP phase
 
   // Check Twilio configuration on component mount
   useEffect(() => {
@@ -134,13 +134,13 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
 
       setVerificationSid(result.verificationSid || null);
       
-      // Store development OTP code if provided (for development/testing)
-      // In production/post-MVP, OTP will be sent via SMS and not shown here
-      if (result.code && result.developmentMode) {
-        setDevOtpCode(result.code);
-        console.log('📱 Development OTP code received:', result.code);
+      // Store MVP OTP code if provided (for MVP phase)
+      // In post-MVP, OTP will be sent via SMS and not shown here
+      if (result.code && result.mvpMode) {
+        setMvpOtpCode(result.code);
+        console.log('📱 MVP OTP code received:', result.code);
       } else {
-        setDevOtpCode(null);
+        setMvpOtpCode(null);
       }
       
       setStep('otp');
@@ -248,8 +248,8 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
   };
 
   const handleResendOTP = async () => {
-    // Clear previous development OTP when resending
-    setDevOtpCode(null);
+    // Clear previous MVP OTP when resending
+    setMvpOtpCode(null);
     if (countdown > 0) return;
     
     setError('');
@@ -404,20 +404,20 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
           </AlertDescription>
         </Alert>
 
-        {/* Display development OTP code for testing during development */}
-        {/* In production/post-MVP, OTP will be sent directly via SMS to mobile phone */}
-        {devOtpCode && (
+        {/* Display MVP OTP code for testing during MVP phase */}
+        {/* In post-MVP, OTP will be sent directly via SMS to mobile phone */}
+        {mvpOtpCode && (
           <Alert className="bg-amber-50 border-amber-200">
             <AlertDescription className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-amber-900">🔧 Development Mode:</span>
+                <span className="font-semibold text-amber-900">📱 MVP Phase:</span>
                 <span className="text-amber-800">Your verification code is:</span>
                 <span className="font-mono font-bold text-lg text-amber-900 bg-amber-100 px-3 py-1 rounded">
-                  {devOtpCode}
+                  {mvpOtpCode}
                 </span>
               </div>
               <p className="text-xs text-amber-700 mt-1">
-                Note: In production/post-MVP, the code will be sent directly to your mobile phone via SMS.
+                Note: In post-MVP, the code will be sent directly to your mobile phone via SMS.
               </p>
             </AlertDescription>
           </Alert>

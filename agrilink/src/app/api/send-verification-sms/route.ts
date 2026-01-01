@@ -33,21 +33,21 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Include OTP code in response for development/testing purposes
-        // During development: OTP is shown in UI for testing
-        // In production/post-MVP: OTP will be sent directly via SMS to mobile phone
+        // Include OTP code in response for MVP phase
+        // During MVP: OTP is shown in UI for testing (SMS may not be delivered on trial plans)
+        // In post-MVP/production: OTP will be sent directly via SMS to mobile phone
         const response: any = { 
             success: true,
             message: result.message ||  'Verification code sent successfully',
             verificationId: result.verificationId
         };
 
-        // Include code in development mode only
-        // In production, the code will be sent via SMS and not shown in UI
-        const isDevelopment = process.env.NODE_ENV !== 'production' || process.env.SHOW_OTP_IN_DEV === 'true';
-        if (result.code && isDevelopment) {
+        // Include code during MVP phase
+        // In post-MVP, the code will be sent via SMS and not shown in UI
+        const isMVP = process.env.NODE_ENV !== 'production' || process.env.SHOW_OTP_IN_MVP === 'true';
+        if (result.code && isMVP) {
             response.code = result.code;
-            response.developmentMode = true; // Indicate this is for development/testing
+            response.mvpMode = true; // Indicate this is MVP phase
         }
 
         return NextResponse.json(response);
