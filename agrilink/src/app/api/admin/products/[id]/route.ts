@@ -17,8 +17,14 @@ export async function PATCH(
     const token = authHeader.substring(7);
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
     
-    // Check if user is admin
-    if (decoded.email !== 'admin@agrilink.com') {
+    // Check if user is admin (check userType in database)
+    const [adminUser] = await sql`
+      SELECT id, email, "userType" 
+      FROM users 
+      WHERE id = ${decoded.userId} AND "userType" = 'admin'
+    `;
+
+    if (!adminUser) {
       return NextResponse.json({ message: 'Admin access required' }, { status: 403 });
     }
 
