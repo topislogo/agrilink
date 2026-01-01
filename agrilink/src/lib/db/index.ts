@@ -34,7 +34,24 @@ const getDatabaseUrl = () => {
   throw new Error('DATABASE_URL environment variable is required');
 };
 
-const databaseUrl = getDatabaseUrl();
+let databaseUrl = getDatabaseUrl();
+
+// Remove channel_binding parameter as it's not supported by Neon serverless driver
+// The serverless driver uses HTTP/WebSocket, not direct TCP connections
+if (databaseUrl.includes('channel_binding=')) {
+  // Remove channel_binding parameter (can be ?channel_binding= or &channel_binding=)
+  databaseUrl = databaseUrl.replace(/[?&]channel_binding=[^&]*/g, (match) => {
+    // If it starts with ?, replace with ?, otherwise remove the whole match
+    return match.startsWith('?') ? '?' : '';
+  });
+  // Clean up any double question marks, ampersands, or trailing separators
+  databaseUrl = databaseUrl.replace(/\?\?+/g, '?').replace(/&+/g, '&').replace(/[?&]$/, '');
+  // If we removed a ? but there are still query params, ensure we have a ?
+  if (databaseUrl.includes('&') && !databaseUrl.includes('?')) {
+    const [base, ...params] = databaseUrl.split('&');
+    databaseUrl = `${base}?${params.join('&')}`;
+  }
+}
 
 console.log('🔗 Database URL:', databaseUrl.includes('ep-weathered-sea') ? '✅ DEVELOPMENT' : '✅ PRODUCTION/STAGING');
 
