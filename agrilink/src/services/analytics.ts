@@ -15,36 +15,112 @@ export interface UserAnalytics {
 
 export const analyticsAPI = {
   async trackProfileView(sellerId: string, viewerId?: string) {
-    console.log(`📊 Tracking profile view for seller ${sellerId} by viewer ${viewerId || 'anonymous'}`);
-    // TODO: Implement actual analytics tracking with Neon database
-    return Promise.resolve({ success: true });
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          eventType: 'profile_view',
+          targetId: sellerId,
+          metadata: viewerId ? { viewerId } : null
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to track profile view:', response.status);
+        return { success: false };
+      }
+
+      const data = await response.json();
+      return { success: true, event: data.event };
+    } catch (error) {
+      console.error('Error tracking profile view:', error);
+      return { success: false };
+    }
   },
   
   async trackProductView(productId: string, viewerId?: string) {
-    console.log(`📊 Tracking product view for product ${productId} by viewer ${viewerId || 'anonymous'}`);
-    // TODO: Implement actual analytics tracking with Neon database
-    return Promise.resolve({ success: true });
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          eventType: 'product_view',
+          targetId: productId,
+          metadata: viewerId ? { viewerId } : null
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to track product view:', response.status);
+        return { success: false };
+      }
+
+      const data = await response.json();
+      return { success: true, event: data.event };
+    } catch (error) {
+      console.error('Error tracking product view:', error);
+      return { success: false };
+    }
   },
   
   async trackInquiry(sellerId: string, productId: string, buyerId: string) {
-    console.log(`📊 Tracking inquiry for product ${productId} from buyer ${buyerId} to seller ${sellerId}`);
-    // TODO: Implement actual analytics tracking with Neon database
+    // Inquiries are automatically tracked via conversations table
+    // This function is kept for API compatibility but doesn't need to do anything
+    console.log(`📊 Inquiry tracked via conversation for product ${productId} from buyer ${buyerId} to seller ${sellerId}`);
     return Promise.resolve({ success: true });
   },
   
   async getUserAnalytics(userId: string): Promise<UserAnalytics> {
-    console.log(`📊 Getting analytics for user ${userId}`);
-    // TODO: Implement actual analytics retrieval from Neon database
-    return Promise.resolve({
-      monthlyInquiries: 0,
-      monthlyProfileViews: 0,
-      monthlyProductViews: 0,
-      totalInquiries: 0,
-      totalProfileViews: 0,
-      totalProductViews: 0,
-      conversionRate: 0,
-      topProducts: [],
-      recentActivity: []
-    });
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token');
+      }
+
+      const response = await fetch(`/api/analytics/user/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch analytics: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        monthlyInquiries: data.monthlyInquiries || 0,
+        monthlyProfileViews: data.monthlyProfileViews || 0,
+        monthlyProductViews: data.monthlyProductViews || 0,
+        totalInquiries: 0, // TODO: Add total counts if needed
+        totalProfileViews: 0,
+        totalProductViews: 0,
+        conversionRate: 0,
+        topProducts: [],
+        recentActivity: []
+      };
+    } catch (error) {
+      console.error('Error fetching user analytics:', error);
+      return {
+        monthlyInquiries: 0,
+        monthlyProfileViews: 0,
+        monthlyProductViews: 0,
+        totalInquiries: 0,
+        totalProfileViews: 0,
+        totalProductViews: 0,
+        conversionRate: 0,
+        topProducts: [],
+        recentActivity: []
+      };
+    }
   }
 };

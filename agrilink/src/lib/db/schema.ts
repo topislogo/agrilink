@@ -402,6 +402,16 @@ export const verificationCodes = pgTable('verification_codes', {
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
 });
 
+// Analytics events table - Track profile views, product views, and other analytics
+export const analyticsEvents = pgTable('analytics_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventType: text('eventType').notNull(), // 'profile_view', 'product_view'
+  targetId: uuid('targetId').notNull(), // sellerId for profile_view, productId for product_view
+  viewerId: uuid('viewerId').references(() => users.id, { onDelete: 'set null' }), // null for anonymous
+  metadata: jsonb('metadata'), // Additional event data
+  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
+});
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -649,3 +659,6 @@ export type NewStatusType = typeof statusTypes.$inferInsert;
 
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;

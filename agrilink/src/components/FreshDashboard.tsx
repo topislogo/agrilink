@@ -25,7 +25,7 @@ import {
   Calendar,
   MapPin,
   CheckCircle,
-  XCircle
+  XCircle,
 } from "lucide-react";
 
 interface Product {
@@ -89,15 +89,22 @@ export function FreshDashboard({
     const fetchAnalytics = async () => {
       try {
         setAnalyticsLoading(true);
-        // Simulate analytics data based on user products
-        const mockAnalytics = {
-          monthlyInquiries: Math.floor(userProducts.length * (user.verified ? 8 : 3)),
-          monthlyProfileViews: Math.floor(userProducts.length * (user.verified ? 25 : 12)),
-          monthlyProductViews: Math.floor(userProducts.length * (user.verified ? 15 : 8))
-        };
-        setAnalytics(mockAnalytics);
+        // Import analytics service
+        const { analyticsAPI } = await import('@/services/analytics');
+        const analyticsData = await analyticsAPI.getUserAnalytics(user.id);
+        setAnalytics({
+          monthlyInquiries: analyticsData.monthlyInquiries,
+          monthlyProfileViews: analyticsData.monthlyProfileViews,
+          monthlyProductViews: analyticsData.monthlyProductViews
+        });
       } catch (error) {
         console.error('Error fetching analytics:', error);
+        // Fallback to 0 if API fails
+        setAnalytics({
+          monthlyInquiries: 0,
+          monthlyProfileViews: 0,
+          monthlyProductViews: 0
+        });
       } finally {
         setAnalyticsLoading(false);
       }
@@ -106,7 +113,7 @@ export function FreshDashboard({
     if (user.id) {
       fetchAnalytics();
     }
-  }, [user.id, userProducts.length, user.verified]);
+  }, [user.id]);
 
   const totalProducts = userProducts.length;
   const recentProducts = userProducts.slice(0, 3);

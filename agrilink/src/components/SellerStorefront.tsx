@@ -181,20 +181,30 @@ export function SellerStorefront({
   // Modal state
   const [showAllReviewsModal, setShowAllReviewsModal] = useState(false);
 
-  // Track profile view when component mounts
+  // Track profile view when component mounts (only once per seller per session)
+  const trackedSellers = useRef<Set<string>>(new Set());
   useEffect(() => {
     const trackProfileView = async () => {
       if (!seller.id || isOwnStorefront) return; // Don't track own profile views
       
+      // Check if we've already tracked this seller in this session
+      if (trackedSellers.current.has(seller.id)) {
+        console.log('📊 Profile view already tracked for:', seller.name);
+        return;
+      }
+      
       try {
         await analyticsAPI.trackProfileView(seller.id, currentUser?.id);
+        trackedSellers.current.add(seller.id); // Mark as tracked
         console.log('📊 Profile view tracked for:', seller.name);
       } catch (error) {
         console.error('❌ Error tracking profile view:', error);
       }
     };
 
-    trackProfileView();
+    // Add a small delay to prevent duplicate tracking on rapid navigation
+    const timeoutId = setTimeout(trackProfileView, 500);
+    return () => clearTimeout(timeoutId);
   }, [seller.id, isOwnStorefront, currentUser?.id]);
 
   // Fetch seller statistics

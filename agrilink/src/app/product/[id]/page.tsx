@@ -92,6 +92,26 @@ export default function ProductDetailsPage() {
     loadProduct();
   }, [productId]);
 
+  // Track product view
+  useEffect(() => {
+    const trackProductView = async () => {
+      if (!productId) return;
+      
+      try {
+        const { analyticsAPI } = await import('@/services/analytics');
+        await analyticsAPI.trackProductView(productId, user?.id);
+        console.log('📊 Product view tracked for:', productId);
+      } catch (error) {
+        console.error('❌ Error tracking product view:', error);
+      }
+    };
+
+    // Track view after product is loaded
+    if (product && !isLoading) {
+      trackProductView();
+    }
+  }, [product, productId, user?.id, isLoading]);
+
   const loadProduct = async () => {
     try {
         console.log('🔄 Loading product:', productId);
