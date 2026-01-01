@@ -399,7 +399,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-      <AppFooter />
     </div>
   );
 }
