@@ -10,6 +10,16 @@ import { useRouter } from "next/navigation";
 export default function TermsOfServicePage() {
   const router = useRouter();
 
+  const handleBack = () => {
+    // Try to go back, but if it fails or there's no history, go to home
+    if (typeof window !== 'undefined' && document.referrer && document.referrer !== window.location.href) {
+      router.back();
+    } else {
+      // Fallback to home page
+      router.push('/');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader />
@@ -17,7 +27,7 @@ export default function TermsOfServicePage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Button
           variant="ghost"
-          onClick={() => router.back()}
+          onClick={handleBack}
           className="mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
