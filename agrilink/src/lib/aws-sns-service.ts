@@ -1,12 +1,9 @@
-import { neon } from '@neondatabase/serverless';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import { getNeonSql } from '@/lib/db/connection-helper';
 
 // Get database connection
 const getSql = () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not configured');
-  }
-  return neon(process.env.DATABASE_URL);
+  return getNeonSql();
 };
 
 interface SNSSMSResult {
