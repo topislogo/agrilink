@@ -51,6 +51,7 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
   const [isTwilioConfigured, setIsTwilioConfigured] = useState(false);
   const [verificationSid, setVerificationSid] = useState<string | null>(null);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [mvpOtpCode, setMvpOtpCode] = useState<string | null>(null); // Store OTP from API response for MVP phase
 
   // Check Twilio configuration on component mount
   useEffect(() => {
@@ -132,6 +133,16 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
       }
 
       setVerificationSid(result.verificationSid || null);
+      
+      // Store MVP OTP code if provided (for MVP phase)
+      // In post-MVP, OTP will be sent via SMS and not shown here
+      if (result.code && result.mvpMode) {
+        setMvpOtpCode(result.code);
+        console.log('📱 MVP OTP code received:', result.code);
+      } else {
+        setMvpOtpCode(null);
+      }
+      
       setStep('otp');
       startCountdown();
       
@@ -237,6 +248,8 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
   };
 
   const handleResendOTP = async () => {
+    // Clear previous MVP OTP when resending
+    setMvpOtpCode(null);
     if (countdown > 0) return;
     
     setError('');
@@ -390,6 +403,25 @@ export function PhoneVerification({ currentUser, onVerificationComplete, onBack 
             <span className="font-medium">{formatPhoneNumber(phoneNumber)}</span>
           </AlertDescription>
         </Alert>
+
+        {/* Display MVP OTP code for testing during MVP phase */}
+        {/* In post-MVP, OTP will be sent directly via SMS to mobile phone */}
+        {mvpOtpCode && (
+          <Alert className="bg-amber-50 border-amber-200">
+            <AlertDescription className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-amber-900">📱 MVP Phase:</span>
+                <span className="text-amber-800">Your verification code is:</span>
+                <span className="font-mono font-bold text-lg text-amber-900 bg-amber-100 px-3 py-1 rounded">
+                  {mvpOtpCode}
+                </span>
+              </div>
+              <p className="text-xs text-amber-700 mt-1">
+                Note: In post-MVP, the code will be sent directly to your mobile phone via SMS.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="otp">Verification Code</Label>

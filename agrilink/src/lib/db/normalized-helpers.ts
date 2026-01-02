@@ -1,12 +1,12 @@
-import { neon } from '@neondatabase/serverless';
 import { eq } from 'drizzle-orm';
+import { getNeonSql } from './connection-helper';
 
 /**
  * Helper functions for working with the normalized database schema
  * These functions provide easy-to-use interfaces for common operations
  */
 
-const sql = neon(process.env.DATABASE_URL!);
+const sql = getNeonSql();
 
 // ============================================================================
 // USER QUERIES
