@@ -37,7 +37,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { status, cancellationReason } = body;
+    const { status, cancellationReason, rejectionReason } = body;
 
     console.log('🔍 Update offer API - Request:', {
       offerId,
@@ -64,6 +64,7 @@ export async function PUT(
         o.status,
         o.quantity as "offerQuantity",
         o."productId",
+        o."expiresAt",
         p.name as "productName",
         p."availableStock",
         buyer.name as "buyerName",
@@ -93,6 +94,16 @@ export async function PUT(
         { message: 'Forbidden - You can only update your own offers or offers on your products' },
         { status: 403 }
       );
+    }
+
+    // Check if offer is expired when trying to accept it
+    if (status === 'accepted' && existingOffer.status === 'pending') {
+      if (existingOffer.expiresAt && new Date(existingOffer.expiresAt) < new Date()) {
+        return NextResponse.json(
+          { message: 'Cannot accept an expired offer. The offer has passed its expiration date.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Get current offer to check delivery options
