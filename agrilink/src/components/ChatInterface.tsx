@@ -548,16 +548,29 @@ export function ChatInterface({
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
+      } else if (response.status === 404) {
+        // 404 is expected when conversation has no offers yet - not an error
+        setOffers([]);
       } else {
+        // Only log actual errors (not 404 or other expected statuses)
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to fetch offers:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
+        // Only log if it's a server error (5xx) or unexpected client error (not 404)
+        if (response.status >= 500 || (response.status >= 400 && response.status !== 404)) {
+          console.error('❌ Failed to fetch offers:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+        }
+        // Set empty offers array for any non-critical error
+        setOffers([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching offers:', error);
+      // Network errors or other exceptions - log but don't break the UI
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Error fetching offers (non-critical):', error);
+      }
+      setOffers([]);
     }
   };
 
@@ -580,16 +593,29 @@ export function ChatInterface({
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
+      } else if (response.status === 404) {
+        // 404 is expected when conversation has no offers yet - not an error
+        setOffers([]);
       } else {
+        // Only log actual errors (not 404 or other expected statuses)
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to fetch offers:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
+        // Only log if it's a server error (5xx) or unexpected client error (not 404)
+        if (response.status >= 500 || (response.status >= 400 && response.status !== 404)) {
+          console.error('❌ Failed to fetch offers:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+        }
+        // Set empty offers array for any non-critical error
+        setOffers([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching offers:', error);
+      // Network errors or other exceptions - log but don't break the UI
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Error fetching offers (non-critical):', error);
+      }
+      setOffers([]);
     }
   };
 
@@ -757,8 +783,15 @@ export function ChatInterface({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit offer');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          errorData = { message: 'Failed to submit offer. Please try again.' };
+        }
+        const errorMessage = errorData.message || 'Failed to submit offer. Please try again.';
+        alert(errorMessage);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -790,9 +823,12 @@ export function ChatInterface({
         detail: { conversationId: targetConversationId }
       }));
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error submitting offer:', error);
-      alert('Failed to submit offer. Please try again.');
+      // Only show generic error if it's a network error (not already shown in if (!response.ok) block)
+      if (error.message && !error.message.includes('Failed to submit offer')) {
+        alert('Failed to submit offer. Please check your connection and try again.');
+      }
       throw error;
     }
   };

@@ -720,11 +720,32 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    // Validate file types - only allow image files
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    const invalidFiles = files.filter(file => !allowedImageTypes.includes(file.type.toLowerCase()));
+    
+    if (invalidFiles.length > 0) {
+      const invalidFileNames = invalidFiles.map(f => f.name).join(', ');
+      setValidationErrors(prev => ({ 
+        ...prev, 
+        images: `Invalid file type(s): ${invalidFileNames}. Only image files (JPEG, PNG, WebP, GIF) are allowed.` 
+      }));
+      // Clear the input value
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     const maxImages = 10; // Reasonable limit
     const currentImageCount = formData.images?.length || 0;
     
     if (currentImageCount + files.length > maxImages) {
       setValidationErrors(prev => ({ ...prev, images: `Maximum ${maxImages} images allowed` }));
+      // Clear the input value
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
@@ -732,10 +753,14 @@ export function SimplifiedProductForm({ currentUser, onBack, onSave, editingProd
     const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
       setValidationErrors(prev => ({ ...prev, images: 'Each image must be smaller than 5MB' }));
+      // Clear the input value
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
-    // Clear any previous errors and messages
+    // Clear any previous errors and messages before processing valid files
     setValidationErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors.images;

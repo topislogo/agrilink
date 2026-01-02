@@ -15,9 +15,9 @@ import {
   categories,
   conversations
 } from '@/lib/db/schema';
-import { eq, and, or, desc } from 'drizzle-orm';
+import { eq, and, or, desc, inArray } from 'drizzle-orm';
 import { verifyToken as verifyTokenApi } from '@/lib/api-middleware';
-import { sql as dbSql } from '@/lib/db';
+import { sql } from '@/lib/db';
 
 function verifyToken(request: NextRequest) {
   try {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     if (conversationId) {
       // Fetch offers for a specific conversation with detailed product and user info
       console.log('🔍 Fetching offers for conversation:', conversationId);
-      const offersResult = await dbSql`
+      const offersResult = await sql`
         SELECT 
           o.id,
           o."conversationId",
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       console.log('✅ Offers query executed, found', offers.length, 'offers');
     } else if (type === 'sent') {
       // Fetch sent offers with detailed product and user info
-      const sentOffersResult = await dbSql`
+      const sentOffersResult = await sql`
         SELECT 
           o.id,
           o."conversationId",
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
       offers = sentOffersResult;
     } else if (type === 'received') {
       // Fetch received offers with detailed product and user info
-      const receivedOffersResult = await dbSql`
+      const receivedOffersResult = await sql`
         SELECT 
           o.id,
           o."conversationId",
@@ -344,9 +344,18 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!productId || !offerPrice || !quantity) {
+    if (!productId || !offerPrice || quantity === undefined || quantity === null) {
       return NextResponse.json(
         { message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate quantity is a positive number
+    const quantityNum = typeof quantity === 'number' ? quantity : parseInt(quantity);
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      return NextResponse.json(
+        { message: 'Quantity must be greater than 0' },
         { status: 400 }
       );
     }
@@ -359,6 +368,7 @@ export async function POST(request: NextRequest) {
         sellerId: productsTable.sellerId,
         sellerType: productsTable.sellerType,
         sellerName: productsTable.sellerName,
+        availableStock: productsTable.availableStock,
       })
       .from(productsTable)
       .where(eq(productsTable.id, productId))
@@ -377,6 +387,31 @@ export async function POST(request: NextRequest) {
     if (productData.sellerId === user.id) {
       return NextResponse.json(
         { message: 'Cannot make offer on your own product' },
+        { status: 400 }
+      );
+    }
+
+    // Validate quantity against available stock
+    const availableStock = productData.availableStock ? parseInt(productData.availableStock) : 0;
+    
+    // Calculate actual available stock by subtracting pending/accepted offers
+    const pendingOffersResult = await sql`
+      SELECT COALESCE(SUM(quantity), 0) as total_offered
+      FROM offers 
+      WHERE "productId" = ${productId} 
+      AND status IN ('pending', 'accepted')
+    `;
+    
+    const totalOffered = Number(pendingOffersResult[0]?.total_offered) || 0;
+    const actualAvailable = Math.max(0, availableStock - totalOffered);
+    
+    // Validate offer quantity doesn't exceed available stock
+    if (quantityNum > actualAvailable) {
+      return NextResponse.json(
+        { 
+          message: `Quantity cannot exceed available stock. Available: ${actualAvailable}, Requested: ${quantityNum}`,
+          availableStock: actualAvailable
+        },
         { status: 400 }
       );
     }
@@ -438,7 +473,7 @@ export async function POST(request: NextRequest) {
         sellerId: productData.sellerId,
         conversationId: conversationId,
         offerPrice: offerPrice.toString(),
-        quantity: quantity,
+        quantity: quantityNum,
         message: message || null,
         status: 'pending',
         deliveryAddress: deliveryAddress || null,
