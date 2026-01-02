@@ -548,16 +548,29 @@ export function ChatInterface({
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
+      } else if (response.status === 404) {
+        // 404 is expected when conversation has no offers yet - not an error
+        setOffers([]);
       } else {
+        // Only log actual errors (not 404 or other expected statuses)
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to fetch offers:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
+        // Only log if it's a server error (5xx) or unexpected client error (not 404)
+        if (response.status >= 500 || (response.status >= 400 && response.status !== 404)) {
+          console.error('❌ Failed to fetch offers:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+        }
+        // Set empty offers array for any non-critical error
+        setOffers([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching offers:', error);
+      // Network errors or other exceptions - log but don't break the UI
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Error fetching offers (non-critical):', error);
+      }
+      setOffers([]);
     }
   };
 
@@ -580,16 +593,29 @@ export function ChatInterface({
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
+      } else if (response.status === 404) {
+        // 404 is expected when conversation has no offers yet - not an error
+        setOffers([]);
       } else {
+        // Only log actual errors (not 404 or other expected statuses)
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to fetch offers:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
+        // Only log if it's a server error (5xx) or unexpected client error (not 404)
+        if (response.status >= 500 || (response.status >= 400 && response.status !== 404)) {
+          console.error('❌ Failed to fetch offers:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+        }
+        // Set empty offers array for any non-critical error
+        setOffers([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching offers:', error);
+      // Network errors or other exceptions - log but don't break the UI
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Error fetching offers (non-critical):', error);
+      }
+      setOffers([]);
     }
   };
 
