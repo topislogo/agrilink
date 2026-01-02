@@ -15,9 +15,9 @@ import {
   categories,
   conversations
 } from '@/lib/db/schema';
-import { eq, and, or, desc } from 'drizzle-orm';
+import { eq, and, or, desc, inArray } from 'drizzle-orm';
 import { verifyToken as verifyTokenApi } from '@/lib/api-middleware';
-import { sql as dbSql } from '@/lib/db';
+import { sql } from '@/lib/db';
 
 function verifyToken(request: NextRequest) {
   try {
@@ -359,6 +359,7 @@ export async function POST(request: NextRequest) {
         sellerId: productsTable.sellerId,
         sellerType: productsTable.sellerType,
         sellerName: productsTable.sellerName,
+        availableStock: productsTable.availableStock,
       })
       .from(productsTable)
       .where(eq(productsTable.id, productId))
@@ -377,6 +378,31 @@ export async function POST(request: NextRequest) {
     if (productData.sellerId === user.id) {
       return NextResponse.json(
         { message: 'Cannot make offer on your own product' },
+        { status: 400 }
+      );
+    }
+
+    // Validate quantity against available stock
+    const availableStock = productData.availableStock ? parseInt(productData.availableStock) : 0;
+    
+    // Calculate actual available stock by subtracting pending/accepted offers
+    const pendingOffersResult = await sql`
+      SELECT COALESCE(SUM(quantity), 0) as total_offered
+      FROM offers 
+      WHERE "productId" = ${productId} 
+      AND status IN ('pending', 'accepted')
+    `;
+    
+    const totalOffered = Number(pendingOffersResult[0]?.total_offered) || 0;
+    const actualAvailable = Math.max(0, availableStock - totalOffered);
+    
+    // Validate offer quantity doesn't exceed available stock
+    if (quantity > actualAvailable) {
+      return NextResponse.json(
+        { 
+          message: `Quantity cannot exceed available stock. Available: ${actualAvailable}, Requested: ${quantity}`,
+          availableStock: actualAvailable
+        },
         { status: 400 }
       );
     }

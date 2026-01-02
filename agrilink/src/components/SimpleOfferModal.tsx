@@ -266,6 +266,20 @@ export function SimpleOfferModal({
       errors.push('Offer Price and Quantity are required');
     }
 
+    // Validate quantity is positive
+    const quantityNum = parseInt(quantity);
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      errors.push('Quantity must be greater than 0');
+    }
+
+    // Validate quantity doesn't exceed available stock
+    if (productData && productData.availableQuantity !== undefined) {
+      const availableQuantity = parseInt(productData.availableQuantity) || 0;
+      if (quantityNum > availableQuantity) {
+        errors.push(`Quantity cannot exceed available stock. Available: ${availableQuantity}, Requested: ${quantityNum}`);
+      }
+    }
+
     // Validate delivery options
     const validDeliveryOptions = deliveryOptions.filter(opt => opt && opt !== '');
     if (validDeliveryOptions.length === 0) {
