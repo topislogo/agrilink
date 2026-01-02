@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     if (conversationId) {
       // Fetch offers for a specific conversation with detailed product and user info
       console.log('🔍 Fetching offers for conversation:', conversationId);
-      const offersResult = await dbSql`
+      const offersResult = await sql`
         SELECT 
           o.id,
           o."conversationId",
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       console.log('✅ Offers query executed, found', offers.length, 'offers');
     } else if (type === 'sent') {
       // Fetch sent offers with detailed product and user info
-      const sentOffersResult = await dbSql`
+      const sentOffersResult = await sql`
         SELECT 
           o.id,
           o."conversationId",
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
       offers = sentOffersResult;
     } else if (type === 'received') {
       // Fetch received offers with detailed product and user info
-      const receivedOffersResult = await dbSql`
+      const receivedOffersResult = await sql`
         SELECT 
           o.id,
           o."conversationId",
