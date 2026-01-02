@@ -30,7 +30,8 @@ import {
   Award,
   BarChart3,
   AlertCircle,
-  Building2
+  Building2,
+  Wrench
 } from "lucide-react";
 
 interface UserMenuProps {
@@ -290,6 +291,20 @@ export function UserMenuWithSupport({ user, onLogout, onViewStorefront, onUpdate
                 </Button>
               )}
               
+              {user.userType === 'admin' && (
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2"
+                  onClick={() => {
+                    setShowProfile(false);
+                    window.location.href = '/admin/maintenance';
+                  }}
+                >
+                  <Wrench className="w-4 h-4" />
+                  Maintenance Schedules
+                </Button>
+              )}
+              
               {/* Messages button - Only show for non-admin users (user-to-user chat) */}
               {user.userType !== 'admin' && (
                 <Button 
@@ -472,6 +487,12 @@ export function UserMenuWithSupport({ user, onLogout, onViewStorefront, onUpdate
             <DropdownMenuItem onClick={onShowAdminVerification}>
               <Award className="mr-2 h-4 w-4" />
               <span>Verification Requests</span>
+            </DropdownMenuItem>
+          )}
+          {user.userType === 'admin' && (
+            <DropdownMenuItem onClick={() => window.location.href = '/admin/maintenance'}>
+              <Wrench className="mr-2 h-4 w-4" />
+              <span>Maintenance Schedules</span>
             </DropdownMenuItem>
           )}
           {(user.userType === 'farmer' || user.userType === 'trader') && (
