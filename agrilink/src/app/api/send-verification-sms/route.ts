@@ -42,10 +42,10 @@ export async function POST(request: NextRequest) {
             verificationId: result.verificationId
         };
 
-        // Include code during MVP phase
+        // Include code during MVP phase (always show during MVP)
         // In post-MVP, the code will be sent via SMS and not shown in UI
-        const isMVP = process.env.NODE_ENV !== 'production' || process.env.SHOW_OTP_IN_MVP === 'true';
-        if (result.code && isMVP) {
+        // For MVP, we always show the code regardless of environment
+        if (result.code) {
             response.code = result.code;
             response.mvpMode = true; // Indicate this is MVP phase
         }
