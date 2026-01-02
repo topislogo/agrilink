@@ -344,9 +344,18 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!productId || !offerPrice || !quantity) {
+    if (!productId || !offerPrice || quantity === undefined || quantity === null) {
       return NextResponse.json(
         { message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate quantity is a positive number
+    const quantityNum = typeof quantity === 'number' ? quantity : parseInt(quantity);
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      return NextResponse.json(
+        { message: 'Quantity must be greater than 0' },
         { status: 400 }
       );
     }
@@ -397,10 +406,10 @@ export async function POST(request: NextRequest) {
     const actualAvailable = Math.max(0, availableStock - totalOffered);
     
     // Validate offer quantity doesn't exceed available stock
-    if (quantity > actualAvailable) {
+    if (quantityNum > actualAvailable) {
       return NextResponse.json(
         { 
-          message: `Quantity cannot exceed available stock. Available: ${actualAvailable}, Requested: ${quantity}`,
+          message: `Quantity cannot exceed available stock. Available: ${actualAvailable}, Requested: ${quantityNum}`,
           availableStock: actualAvailable
         },
         { status: 400 }
@@ -464,7 +473,7 @@ export async function POST(request: NextRequest) {
         sellerId: productData.sellerId,
         conversationId: conversationId,
         offerPrice: offerPrice.toString(),
-        quantity: quantity,
+        quantity: quantityNum,
         message: message || null,
         status: 'pending',
         deliveryAddress: deliveryAddress || null,

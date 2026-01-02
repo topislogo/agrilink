@@ -262,13 +262,13 @@ export function SimpleOfferModal({
     const errors: string[] = [];
     
     // Validate required fields
-    if (!offerPrice || !quantity) {
+    if (!offerPrice || !quantity || quantity.trim() === '') {
       errors.push('Offer Price and Quantity are required');
     }
 
     // Validate quantity is positive
     const quantityNum = parseInt(quantity);
-    if (isNaN(quantityNum) || quantityNum <= 0) {
+    if (!quantity || quantity.trim() === '' || isNaN(quantityNum) || quantityNum <= 0) {
       errors.push('Quantity must be greater than 0');
     }
 

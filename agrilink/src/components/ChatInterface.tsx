@@ -783,8 +783,15 @@ export function ChatInterface({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit offer');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          errorData = { message: 'Failed to submit offer. Please try again.' };
+        }
+        const errorMessage = errorData.message || 'Failed to submit offer. Please try again.';
+        alert(errorMessage);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -816,9 +823,12 @@ export function ChatInterface({
         detail: { conversationId: targetConversationId }
       }));
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error submitting offer:', error);
-      alert('Failed to submit offer. Please try again.');
+      // Only show generic error if it's a network error (not already shown in if (!response.ok) block)
+      if (error.message && !error.message.includes('Failed to submit offer')) {
+        alert('Failed to submit offer. Please check your connection and try again.');
+      }
       throw error;
     }
   };
