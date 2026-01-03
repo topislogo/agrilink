@@ -901,6 +901,26 @@ export function SimpleOfferModal({
             </Card>
           )}
 
+          {/* Terms of Service Reminder */}
+          <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+            <div className="text-xs text-blue-900 flex-1">
+              <p className="leading-normal">
+                Please review AgriLink{' '}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline font-medium"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Terms of Service
+                </a>
+                {' '}before submitting this offer.
+              </p>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-2 pt-2">
             <Button
