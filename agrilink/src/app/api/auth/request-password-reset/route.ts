@@ -18,9 +18,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Please enter a valid email address' }, { status: 400 });
     }
 
+    const normalizedEmail = email?.toLowerCase().trim();
+
     // Check if user exists
     const users = await sql`
-      SELECT id, name, email FROM users WHERE email = ${email}
+      SELECT id, name, email FROM users WHERE email = ${normalizedEmail}
     `;
 
     if (users.length === 0) {
