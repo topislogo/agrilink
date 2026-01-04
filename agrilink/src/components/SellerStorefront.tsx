@@ -50,6 +50,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectValue } from './ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { cn } from '@/lib/utils';
+import { toast, Toaster } from 'sonner';
 
 interface Product {
   id: string;
@@ -155,6 +156,8 @@ export function SellerStorefront({
   const [open, setOpen] = useState(false);
   const [reportIssue, setReportIssue] = useState('');
   const [reports, setReports] = useState<Report[]>([]);
+
+  const isReportDisabled = !reportIssue.trim();
   
   // State for seller statistics
   const [sellerStats, setSellerStats] = useState<SellerStats | null>(null);
@@ -479,7 +482,7 @@ export function SellerStorefront({
 
   const handleReports = async () => {
     if (!reportIssue.trim()) {
-      alert('Please provide a reason for your complaint.');
+      alert('Please provide a reason for your report.');
       return;
     }
 
@@ -499,16 +502,16 @@ export function SellerStorefront({
 
       if (response.ok) {
         const data = await response.json();
-        alert(data.message || 'Report submitted successfully. Our support team will review your case. (Note: Full complaint resolution system is in post-MVP development)');
+        toast.success(data.message || 'Report submitted successfully. Our support team will review your case!');
         setOpen(false);
         setReportIssue('');
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to submit report. Please try again.');
+        toast.error(errorData.message || 'Failed to submit report. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting report:', error);
-      alert('Failed to submit report. Please try again or contact support directly.');
+      toast.error('Failed to submit report. Please try again or contact support directly.');
     }
   }
 
@@ -1779,6 +1782,8 @@ export function SellerStorefront({
         </Card>
       )}
 
+      <Toaster />
+
       {/* Review Slider Modal */}
       {sellerStats && sellerStats.recentReviews && (
         <ReviewSliderModal
@@ -1794,7 +1799,12 @@ export function SellerStorefront({
       )}
 
       {open === true && (
-        <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialog open={open} onOpenChange={(isOpen) => {
+            setOpen(isOpen);
+            if (!isOpen) {
+              setReportIssue('');
+            }
+          }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Report an Issue</AlertDialogTitle>
@@ -1822,7 +1832,8 @@ export function SellerStorefront({
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
+              <AlertDialogAction className="disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isReportDisabled}
                 onClick={async () => {
                   await handleReports();
                   setOpen(false);

@@ -7,11 +7,12 @@ import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
 import { UserBadge, getUserVerificationLevel, AccountTypeBadge } from "./UserBadgeSystem";
 import { ReviewSliderModal } from "./ReviewSliderModal";
-import { User, MapPin, Calendar, Star, MessageCircle, Package, Store, Phone, Globe, Facebook, Instagram, MessageSquare, Edit, Eye, Save,  X, Camera, ChevronLeft, Info, FileText, Clock } from "lucide-react";
+import { User, MapPin, Calendar, Star, MessageCircle, Package, Store, Phone, Globe, Facebook, Instagram, MessageSquare, Edit, Eye, Save,  X, Camera, ChevronLeft, Info, FileText, Clock, Mail } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectValue } from './ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { cn } from '@/lib/utils';
+import { toast, Toaster } from 'sonner';
 
 interface UserProfileData {
   id: string;
@@ -126,6 +127,8 @@ export function UserProfile({
   const [reportIssue, setReportIssue] = useState('');
   const [reports, setReports] = useState<Report[]>([]);
 
+  const isReportDisabled = !reportIssue.trim();
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -175,7 +178,7 @@ export function UserProfile({
 
   const handleReports = async () => {
     if (!reportIssue.trim()) {
-      alert('Please provide a reason for your complaint.');
+      alert('Please provide a reason for your report.');
       return;
     }
 
@@ -195,16 +198,16 @@ export function UserProfile({
 
       if (response.ok) {
         const data = await response.json();
-        alert(data.message || 'Report submitted successfully. Our support team will review your case. (Note: Full complaint resolution system is in post-MVP development)');
+        toast.success(data.message || 'Report submitted successfully. Our support team will review your case!');
         setOpen(false);
         setReportIssue('');
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to submit report. Please try again.');
+        toast.error(errorData.message || 'Failed to submit report. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting report:', error);
-      alert('Failed to submit report. Please try again or contact support directly.');
+      toast.error('Failed to submit report. Please try again or contact support directly.');
     }
   }
 
@@ -433,6 +436,13 @@ export function UserProfile({
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="w-4 h-4 text-muted-foreground" />
                       <span>{userProfile.phone}</span>
+                    </div>
+                  )}
+
+                  {userProfile.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span>{userProfile.email}</span>
                     </div>
                   )}
                   
@@ -1079,6 +1089,8 @@ export function UserProfile({
               </Card>
       )}
 
+      <Toaster />
+
       {/* Review Slider Modal */}
       {allReviews.length > 0 && (
         <ReviewSliderModal
@@ -1091,12 +1103,17 @@ export function UserProfile({
       )}
 
       {open === true && (
-        <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialog open={open} onOpenChange={(isOpen) => {
+            setOpen(isOpen);
+            if (!isOpen) {
+              setReportIssue('');
+            }
+          }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Report an Issue</AlertDialogTitle>
               <AlertDialogDescription>
-                Please describe the issue you encountered with this seller. Our team will investigate your report.
+                Please describe the issue you encountered with this buyer. Our team will investigate your report.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div>
@@ -1119,7 +1136,8 @@ export function UserProfile({
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
+              <AlertDialogAction className="disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isReportDisabled}
                 onClick={async () => {
                   await handleReports();
                   setOpen(false);
