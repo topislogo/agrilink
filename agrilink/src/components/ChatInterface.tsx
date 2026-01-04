@@ -838,8 +838,8 @@ export function ChatInterface({
       {/* Header - Fixed */}
       <CardHeader className="shrink-0 pb-3">
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 min-w-0">
               <button 
                 onClick={() => {
                   const route = (otherPartyType === 'farmer' || otherPartyType === 'trader') 
@@ -847,7 +847,7 @@ export function ChatInterface({
                     : `/user/${otherPartyId}`;
                   window.open(route, '_blank');
                 }}
-                className="text-left hover:text-primary transition-colors"
+                className="max-w-full text-left hover:text-primary transition-colors truncate text-sm sm:text-base"
               >
                 {otherPartyName}
               </button>
