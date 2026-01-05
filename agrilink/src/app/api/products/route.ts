@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
       category: product.category, // No fallback - show actual value
       categoryId: product.categoryId, // Include categoryId
       description: product.description,
-      availableQuantity: product.actualAvailableQuantity?.toString() || product.availableStock, // Use calculated available quantity
+      availableQuantity: product.availableStock,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt || product.createdAt, // Use updatedAt, fallback to createdAt
       lastUpdated: product.updatedAt || product.createdAt, // Also include lastUpdated for backward compatibility
