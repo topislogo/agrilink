@@ -1395,7 +1395,7 @@ export function SellerStorefront({
               </CardContent>
             </Card>
           )}
-          {!isOwnStorefront && currentUser.id != null && !currentUser.isRestricted && currentUser.userType != 'admin' && (<Button variant="ghost" onClick={() => setOpen(true)}>Report a problem with this seller.</Button>)}
+          {!isOwnStorefront && currentUser?.id != null && !currentUser?.isRestricted && currentUser?.userType != 'admin' && (<Button variant="ghost" onClick={() => setOpen(true)}>Report a problem with this seller.</Button>)}
         </div>
 
         {/* Products and Description */}
@@ -1678,7 +1678,7 @@ export function SellerStorefront({
                                   }
                                   onChat(product.id);
                                 }}
-                                disabled={!currentUser || currentUser.isRestricted}
+                                disabled={!currentUser || currentUser?.isRestricted}
                               >
                                 <MessageCircle className="w-3 h-3 mr-1" /> 
                                 {!currentUser ? 'Sign in to chat' : currentUser.isRestricted
@@ -1714,7 +1714,7 @@ export function SellerStorefront({
           </Card>
         </div>
       </div>
-      {currentUser.userType === 'admin' && (
+      {currentUser?.userType === 'admin' && (
         <Card className="border-primary/30">
           <CardHeader>
             <CardTitle>
