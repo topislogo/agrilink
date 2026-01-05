@@ -412,6 +412,18 @@ export const analyticsEvents = pgTable('analytics_events', {
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
 });
 
+// Maintenance schedules table - Track planned maintenance windows
+export const maintenanceSchedules = pgTable('maintenance_schedules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  startTime: timestamp('startTime', { withTimezone: true }).notNull(),
+  endTime: timestamp('endTime', { withTimezone: true }).notNull(),
+  duration: integer('duration').notNull(), // Duration in minutes
+  message: text('message'), // Optional custom message for users
+  isActive: boolean('isActive').default(true),
+  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow(),
+});
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -662,3 +674,6 @@ export type NewNotification = typeof notifications.$inferInsert;
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
+export type MaintenanceSchedule = typeof maintenanceSchedules.$inferSelect;
+export type NewMaintenanceSchedule = typeof maintenanceSchedules.$inferInsert;
