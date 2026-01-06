@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
         userType: users.userType,
         accountType: users.accountType,
         isRestricted: users.isRestricted,
+        lockUntil: users.lockUntil,
+        failedAttempts: users.failedAttempts,
         phone: userProfiles.phone,
         profileImage: userProfiles.profileImage,
         location: sql<string>`CASE WHEN ${locations.city} IS NOT NULL AND ${locations.region} IS NOT NULL THEN ${locations.city} || ', ' || ${locations.region} ELSE ${locations.city} END`,
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
     if (userResult.length === 0) {
       console.log('❌ No user found for email:', email);
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Email or password is incorrect' },
         { status: 401 }
       );
     }
@@ -73,16 +75,52 @@ export async function POST(request: NextRequest) {
     console.log('  JWT_SECRET exists:', !!process.env.JWT_SECRET);
     console.log('  JWT_SECRET length:', process.env.JWT_SECRET?.length || 0);
     console.log('  JWT_SECRET starts with:', process.env.JWT_SECRET?.substring(0, 10) || 'undefined');
+
+    // Check if user is locked
+    if (user.lockUntil && new Date(user.lockUntil) > new Date()) {
+      return NextResponse.json(
+        { error: 'Too many failed attempts. Try again later.' },
+        { status: 403 }
+      );
+    }
+
+    // If lock expired, reset attempts automatically
+    if (user.lockUntil && new Date(user.lockUntil) <= new Date()) {
+      await db.update(users).set({ failedAttempts: 0, lockUntil: null }).where(eq(users.id, user.id));
+      user.failedAttempts = 0;
+      user.lockUntil = null;
+    }
     
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     
     if (!isValidPassword) {
+      const updatedAttempts = (user.failedAttempts || 0) + 1;
+
+      // If reached 3 failed attempts -> lock for 24 hours
+      if (updatedAttempts >= 3) {
+        await db.update(users)
+          .set({
+            failedAttempts: updatedAttempts,
+            lockUntil: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h lock
+          })
+          .where(eq(users.id, user.id));
+
+        return NextResponse.json(
+          { error: 'Too many failed attempts. Account locked for 24 hours.' },
+          { status: 403 }
+        );
+      }
+      // Otherwise just update attempt count
+      await db.update(users).set({ failedAttempts: updatedAttempts }).where(eq(users.id, user.id));
+
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Email or password is incorrect' },
         { status: 401 }
       );
     }
+
+    await db.update(users).set({failedAttempts: 0, lockUntil: null}).where(eq(users.id, user.id));
 
     // Create JWT token
     const token = jwt.sign(
