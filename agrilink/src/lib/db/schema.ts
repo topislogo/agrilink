@@ -81,6 +81,8 @@ export const users = pgTable('users', {
   emailVerificationExpires: timestamp('emailVerificationExpires', { withTimezone: true }),
   pendingEmail: text('pendingEmail'), // Email change requests
   isRestricted: boolean('isRestricted').default(false),
+  failedAttempts: integer('failedAttempts').default(0),
+  lockUntil: timestamp('lockUntil', { withTimezone: true }),
   createdAt: timestamp('createdAt', { withTimezone: true }),
   updatedAt: timestamp('updatedAt', { withTimezone: true }),
 });

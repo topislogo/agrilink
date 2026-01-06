@@ -51,7 +51,7 @@ export default function LoginPage() {
           router.push("/dashboard");
         }
       } else {
-        setError(data.message || 'Email or password is incorrect');
+        setError(data.error || data.message || 'Email or password is incorrect');
       }
     } catch (err: any) {
       console.error('Login failed:', err);
